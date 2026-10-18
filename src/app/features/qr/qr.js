@@ -35,7 +35,11 @@
   });
 
   const el = (id) => document.getElementById(id);
-  const estado = { sesion: null, planes: [], acceso: null, qrs: [], creando: false, enMarco: null };
+  // editando: { id, valor } del QR cuyo nombre se está escribiendo. Vive acá y
+  // no en el DOM porque tic() puede repintar la tabla entera a mitad de edición.
+  const estado = {
+    sesion: null, planes: [], acceso: null, qrs: [], creando: false, enMarco: null, editando: null,
+  };
 
   // --- Datos -----------------------------------------------------------------
 
@@ -144,7 +148,10 @@
     el("qrTablaMarco").hidden = !hayQRs;
     el("qrListaEstado").hidden = hayQRs;
     if (!hayQRs) el("qrListaEstado").textContent = "Todavía no tienes QR. Pega un link arriba para crear el primero.";
+    // Si se repinta mientras alguien escribe el nombre, el foco vuelve al campo.
+    const escribiendo = Boolean(document.activeElement?.closest?.(".qr__tabla-editor"));
     el("qrFilas").replaceChildren(...estado.qrs.map((qr) => crearFila(qr, ahora)));
+    if (escribiendo) el("qrFilas").querySelector(".qr__tabla-editor:not([hidden]) input")?.focus();
   }
 
   function crearFila(qr, ahora) {
@@ -163,6 +170,19 @@
     campo("fecha").replaceChildren(dia.format(creado), horaCreado);
     campo("nombre").hidden = !qr.titulo;
     campo("nombre").textContent = qr.titulo ?? "";
+    // Un QR bloqueado (o la cuenta) no se renombra: qr_renombrar lo rechaza (0052).
+    const renombrable = estadoActual !== "bloqueado" && !estado.acceso?.bloqueado;
+    const editando = renombrable && estado.editando?.id === qr.id;
+    campo("titulo").hidden = editando || (!renombrable && !qr.titulo);
+    const renombrar = fila.querySelector('[data-accion="renombrar"]');
+    renombrar.hidden = !renombrable;
+    campo("renombrar-texto").hidden = Boolean(qr.titulo);
+    renombrar.setAttribute("aria-label", qr.titulo
+      ? `Editar el nombre del QR ${urlVisibleQR(qr.codigo)}`
+      : `Agregar un nombre al QR ${urlVisibleQR(qr.codigo)}`);
+    renombrar.title = qr.titulo ? "Editar el nombre" : "";
+    campo("editor").hidden = !editando;
+    if (editando) campo("editor").querySelector("input").value = estado.editando.valor;
     campo("destino").textContent = qr.destino;
     campo("destino").title = qr.destino;
     const link = campo("link");
@@ -371,6 +391,66 @@
     mostrarToast("QR eliminado.");
   }
 
+  function abrirEditorNombre(qr) {
+    estado.editando = { id: qr.id, valor: qr.titulo ?? "" };
+    pintarTabla(Date.now());
+    const campo = el("qrFilas").querySelector(`[data-id="${qr.id}"] .qr__tabla-editor input`);
+    campo?.focus();
+    campo?.select();
+  }
+
+  function cerrarEditorNombre() {
+    const id = estado.editando?.id;
+    estado.editando = null;
+    pintarTabla(Date.now());
+    el("qrFilas").querySelector(`[data-id="${id}"] [data-accion="renombrar"]`)?.focus();
+  }
+
+  async function guardarNombre(qr, editor) {
+    const validado = validarNombreQR(editor.querySelector("input").value);
+    if (!validado.ok) {
+      mostrarToast(mensajeErrorQR(validado.codigo), "error");
+      return;
+    }
+    if (validado.titulo === (qr.titulo ?? null)) {
+      cerrarEditorNombre();
+      return;
+    }
+    const controles = editor.querySelectorAll("input, button");
+    for (const control of controles) control.disabled = true;
+    try {
+      const { data, error } = await supabaseClient.rpc("qr_renombrar", { p_id: qr.id, p_titulo: validado.titulo ?? "" });
+      if (error || data !== true) throw error ?? new Error("qr_renombrar no cambió nada");
+    } catch (error) {
+      for (const control of controles) control.disabled = false;
+      throw error;
+    }
+    qr.titulo = validado.titulo;
+    estado.editando = null;
+    pintar();
+    el("qrFilas").querySelector(`[data-id="${qr.id}"] [data-accion="renombrar"]`)?.focus();
+    mostrarToast(validado.titulo ? "Nombre guardado." : "Nombre quitado.");
+  }
+
+  function qrDeFila(nodo) {
+    const fila = nodo?.closest("[data-id]");
+    return (fila && estado.qrs.find((otro) => String(otro.id) === fila.dataset.id)) ?? null;
+  }
+
+  async function alEnviarNombre(evento) {
+    const editor = evento.target.closest(".qr__tabla-editor");
+    if (!editor) return;
+    evento.preventDefault();
+    const qr = qrDeFila(editor);
+    if (!qr) return;
+    try {
+      await guardarNombre(qr, editor);
+    } catch (error) {
+      console.error(error);
+      mostrarToast("No se pudo guardar el nombre. Intenta de nuevo.", "error");
+    }
+  }
+
   async function alHacerClickEnTabla(evento) {
     const boton = evento.target.closest("[data-accion]");
     const fila = boton?.closest("[data-id]");
@@ -391,6 +471,10 @@
         }
       } else if (boton.dataset.accion === "eliminar") {
         await eliminar(qr, boton);
+      } else if (boton.dataset.accion === "renombrar") {
+        abrirEditorNombre(qr);
+      } else if (boton.dataset.accion === "cancelar-nombre") {
+        cerrarEditorNombre();
       }
     } catch (error) {
       console.error(error);
@@ -404,6 +488,13 @@
     el("qrFormulario").addEventListener("submit", generar);
     el("qrDestino").addEventListener("input", () => avisoFormulario(""));
     el("qrFilas").addEventListener("click", alHacerClickEnTabla);
+    el("qrFilas").addEventListener("submit", alEnviarNombre);
+    el("qrFilas").addEventListener("input", (evento) => {
+      if (estado.editando && evento.target.closest(".qr__tabla-editor")) estado.editando.valor = evento.target.value;
+    });
+    el("qrFilas").addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape" && evento.target.closest(".qr__tabla-editor")) cerrarEditorNombre();
+    });
 
     el("qrMarcoDescargar").addEventListener("click", alternarMenu);
     for (const opcion of el("qrMenuDescargar").querySelectorAll("[data-formato]")) {

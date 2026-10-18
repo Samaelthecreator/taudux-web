@@ -171,6 +171,13 @@ function validarFormularioQR({ destino, titulo }) {
   return { ok: true };
 }
 
+// Renombrar desde "Mis QR": vacío quita el nombre, igual que qr_renombrar (0052).
+function validarNombreQR(titulo) {
+  const limpio = String(titulo ?? "").trim();
+  if (limpio.length > QR_TITULO_MAXIMO) return { ok: false, codigo: "titulo_largo" };
+  return { ok: true, titulo: limpio || null };
+}
+
 // Los códigos de crear-qr y de _shared/revisarEnlace.mjs, en palabras.
 const MENSAJES_ERROR_QR = Object.freeze({
   enlace_vacio: "Escribe el link al que debe llevar el QR.",
@@ -362,6 +369,7 @@ if (typeof module === "object" && module.exports) {
     cupoQR,
     textoCupoQR,
     validarFormularioQR,
+    validarNombreQR,
     mensajeErrorQR,
     ladoInsigniaQR,
     alineacionesQR,

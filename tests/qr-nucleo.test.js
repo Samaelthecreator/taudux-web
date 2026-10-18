@@ -95,6 +95,14 @@ test("the form catches what is visible at a glance, and nothing more", () => {
     "las reglas finas son del servidor: el acortador lo rechaza crear-qr");
 });
 
+test("renaming trims the name, treats blank as no name and rejects more than 80 characters", () => {
+  assert.deepEqual(nucleo.validarNombreQR("  Menú del café  "), { ok: true, titulo: "Menú del café" });
+  assert.deepEqual(nucleo.validarNombreQR("   "), { ok: true, titulo: null }, "vacío quita el nombre");
+  assert.deepEqual(nucleo.validarNombreQR(null), { ok: true, titulo: null });
+  assert.deepEqual(nucleo.validarNombreQR("x".repeat(80)), { ok: true, titulo: "x".repeat(80) });
+  assert.deepEqual(nucleo.validarNombreQR("x".repeat(81)), { ok: false, codigo: "titulo_largo" });
+});
+
 test("every rejection code the server can send has a message in Spanish", () => {
   /*
     Los códigos se leen del código fuente del servidor, no de una lista a mano:

@@ -261,7 +261,23 @@
     <tr>
       <td data-etiqueta="Fecha de creación" data-qr="fecha"></td>
       <td data-etiqueta="URL">
-        <span class="qr__tabla-nombre" data-qr="nombre" hidden></span>
+        <div class="qr__tabla-titulo" data-qr="titulo">
+          <span class="qr__tabla-nombre" data-qr="nombre" hidden></span>
+          <button type="button" class="qr__tabla-renombrar" data-accion="renombrar">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 20h4L19 9l-4-4L4 16v4z"></path>
+              <path d="M14 6l4 4"></path>
+            </svg>
+            <span data-qr="renombrar-texto">Agregar nombre</span>
+          </button>
+        </div>
+        <form class="qr__tabla-editor" data-qr="editor" hidden>
+          <input class="field qr__tabla-editor-campo" type="text" maxlength="80" autocomplete="off"
+            aria-label="Nombre del QR" placeholder="Nombre del QR">
+          <button type="submit" class="qr__tabla-icono" aria-label="Guardar el nombre">✓</button>
+          <button type="button" class="qr__tabla-icono" data-accion="cancelar-nombre"
+            aria-label="Cancelar">✕</button>
+        </form>
         <span class="qr__tabla-destino" data-qr="destino"></span>
         <button type="button" class="qr__tabla-codigo" data-accion="ver" data-qr="link"></button>
       </td>
