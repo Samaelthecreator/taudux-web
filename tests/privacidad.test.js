@@ -73,3 +73,12 @@ test("privacy notice extends the Resend disclosure beyond authentication emails"
   assert.match(scoped, /autenticaci(ó|o)n/);
   assert.match(scoped, /curso/i);
 });
+
+test("privacy notice discloses the QR expiry email as a primary purpose sent through Resend", () => {
+  const finalidades = html.slice(html.indexOf('id="finalidades"'), html.indexOf('id="terceros"'));
+  const primarias = finalidades.slice(0, finalidades.indexOf("Finalidades secundarias"));
+  assert.match(primarias, /QR[^<]*avisarte por correo[^<]*antes de que venza/);
+  const resendBlock = html.slice(html.indexOf("<strong>Resend</strong>"));
+  const scoped = resendBlock.slice(0, resendBlock.indexOf("</li>"));
+  assert.match(scoped, /QR/);
+});
