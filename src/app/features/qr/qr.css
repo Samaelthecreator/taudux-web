@@ -123,6 +123,83 @@
   gap: 0.75rem;
 }
 
+/* `display: grid` le gana al atributo hidden: el panel de la otra pestaña
+   tiene que desaparecer de verdad. */
+.qr__formulario[hidden] {
+  display: none;
+}
+
+/* Las pestañas Enlace | Wi‑Fi: una píldora con las dos opciones. */
+.qr__pestanas {
+  display: inline-flex;
+  justify-self: start;
+  padding: 0.25rem;
+  border: var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--color-field);
+}
+
+.qr__pestana {
+  padding: 0.45rem 1.1rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.qr__pestana:hover {
+  color: var(--color-text);
+}
+
+/* La elegida, con el degradado de la marca de los botones de slides
+   (.slides__subir): texto oscuro y resplandor cian. */
+.qr__pestana[aria-selected="true"] {
+  background: linear-gradient(135deg, #00d7ff, #4f8cff);
+  color: #04121a;
+  font-weight: 700;
+  box-shadow: 0 0 14px color-mix(in srgb, #00d7ff 45%, transparent);
+}
+
+.qr__pestana:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.qr__wifi-clave {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.qr__wifi-clave[hidden] {
+  display: none;
+}
+
+.qr__wifi-ver {
+  flex: 0 0 auto;
+  min-inline-size: 6.5rem;
+}
+
+.qr__wifi-oculta {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.qr__wifi-oculta input {
+  flex: 0 0 auto;
+  accent-color: var(--color-accent);
+}
+
+.qr__wifi-generar {
+  justify-self: start;
+}
+
 .qr__etiqueta {
   font-weight: 500;
 }

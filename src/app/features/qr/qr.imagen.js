@@ -15,6 +15,11 @@
 // que cada módulo mida un número entero de píxeles.
 const ANCHO_MINIMO_PNG_QR = 1024;
 
+// qrcode-generator codifica por defecto cada carácter como un solo byte: una
+// "ñ" en el nombre de una red salía ilegible. Los links cortos son ASCII, así
+// que en ellos UTF-8 da exactamente los mismos bytes.
+qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+
 function matrizQR(texto) {
   const qr = qrcode(0, "H");
   qr.addData(texto);
@@ -22,9 +27,15 @@ function matrizQR(texto) {
   return { n: qr.getModuleCount(), esOscuro: (fila, col) => qr.isDark(fila, col) };
 }
 
+// Cualquier texto como QR: el link corto de un QR de enlace o el WIFI:… de uno
+// de Wi‑Fi (qr.nucleo.js). Los "DeCodigo" son el caso del link corto.
+function svgQRDeTexto(texto, etiqueta) {
+  const { n, esOscuro } = matrizQR(texto);
+  return svgQR({ n, esOscuro, etiqueta });
+}
+
 function svgQRDeCodigo(codigo) {
-  const { n, esOscuro } = matrizQR(urlCortaQR(codigo));
-  return svgQR({ n, esOscuro, etiqueta: `Código QR de ${urlVisibleQR(codigo)}` });
+  return svgQRDeTexto(urlCortaQR(codigo), `Código QR de ${urlVisibleQR(codigo)}`);
 }
 
 function descargarArchivoQR(blob, nombre) {
@@ -47,11 +58,25 @@ async function descargarPngQR(codigo) {
   descargarArchivoQR(await pngQRBlob(codigo), `qr-${codigo}.png`);
 }
 
+// La descarga de un QR que no tiene código (el de Wi‑Fi): `base` es el nombre
+// del archivo sin extensión.
+async function descargarQRDeTexto(texto, etiqueta, base, formato) {
+  if (formato === "svg") {
+    descargarArchivoQR(new Blob([svgQRDeTexto(texto, etiqueta)], { type: "image/svg+xml" }), `${base}.svg`);
+  } else {
+    descargarArchivoQR(await pngQRBlobDeTexto(texto), `${base}.png`);
+  }
+}
+
+async function pngQRBlob(codigo) {
+  return pngQRBlobDeTexto(urlCortaQR(codigo));
+}
+
 // PNG con las esquinas de la tarjeta transparentes: sobre una hoja blanca no
 // se nota, y sobre un fondo oscuro la tarjeta blanca da el contraste. Lo usan
 // la descarga y "Compartir" (que lo manda como archivo donde se puede).
-async function pngQRBlob(codigo) {
-  const { n, esOscuro } = matrizQR(urlCortaQR(codigo));
+async function pngQRBlobDeTexto(texto) {
+  const { n, esOscuro } = matrizQR(texto);
   const trazos = trazosQR(n, esOscuro);
   const escala = Math.ceil(ANCHO_MINIMO_PNG_QR / trazos.total);
   const lienzo = document.createElement("canvas");

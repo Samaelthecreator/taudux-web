@@ -178,6 +178,89 @@ function validarNombreQR(titulo) {
   return { ok: true, titulo: limpio || null };
 }
 
+/*
+  EL QR DE WI‑FI no pasa por go.taudux.com: el teléfono sólo se une a la red
+  si el QR trae la red y la contraseña adentro. Por eso se arma en el
+  navegador y nunca se manda al servidor: no vence, no se cuenta y no aparece
+  en "Mis QR". El formato es el de ZXing, que leen la cámara de iPhone y la
+  de Android: WIFI:T:<tipo>;S:<red>;P:<contraseña>;H:true;;
+*/
+const QR_WIFI_SEGURIDADES = Object.freeze(["WPA", "WEP", "nopass"]);
+const QR_WIFI_RED_MAXIMO_BYTES = 32; // el SSID de 802.11 son 32 bytes, no 32 caracteres
+/*
+  Lo que cabe en un QR versión 10 (57×57) con nivel H. Medido el 2026-10-20
+  con jsQR sobre el PNG real: hasta la versión 10 se leyeron todas las
+  pruebas (1024 y 300 px); desde la 11 los puntos ya no se leyeron, ni sin
+  insignia (con cuadros sí). Los QR de enlace miden 29×29: esto sólo lo
+  alcanza un Wi‑Fi con red y contraseña largas y llenas de símbolos.
+*/
+const QR_WIFI_MAXIMO_BYTES = 119;
+
+// `\ ; , : "` tienen significado en el formato: van precedidos de `\`.
+function escaparWifiQR(valor) {
+  return String(valor ?? "").replace(/[\\;,:"]/g, (c) => `\\${c}`);
+}
+
+function textoWifiQR({ red, clave, seguridad, oculta = false }) {
+  const contrasena = seguridad === "nopass" ? "" : `P:${escaparWifiQR(clave)};`;
+  return `WIFI:T:${seguridad};S:${escaparWifiQR(red)};${contrasena}${oculta ? "H:true;" : ""};`;
+}
+
+/*
+  Lo que 802.11 no acepta y se ve a simple vista. El nombre no se recorta: un
+  espacio al principio o al final puede ser parte de la red. Las contraseñas
+  de 64 (WPA) o 10/26 (WEP) caracteres hexadecimales son la clave en crudo.
+*/
+const bytesQR = (texto) => new TextEncoder().encode(texto).length;
+
+function validarWifiQR({ red, clave, seguridad, oculta = false }) {
+  const nombre = String(red ?? "");
+  if (!nombre) return { ok: false, codigo: "wifi_red_vacia" };
+  if (bytesQR(nombre) > QR_WIFI_RED_MAXIMO_BYTES) return { ok: false, codigo: "wifi_red_larga" };
+  if (!QR_WIFI_SEGURIDADES.includes(seguridad)) return { ok: false, codigo: "wifi_seguridad" };
+
+  if (seguridad !== "nopass") {
+    const contrasena = String(clave ?? "");
+    if (!contrasena) return { ok: false, codigo: "wifi_clave_vacia" };
+    const hexadecimal = /^[0-9a-f]+$/i.test(contrasena);
+    if (seguridad === "WPA") {
+      const valida = (contrasena.length >= 8 && contrasena.length <= 63) || (contrasena.length === 64 && hexadecimal);
+      if (!valida) return { ok: false, codigo: "wifi_clave_wpa" };
+    } else {
+      const valida = [5, 13].includes(contrasena.length) || ([10, 26].includes(contrasena.length) && hexadecimal);
+      if (!valida) return { ok: false, codigo: "wifi_clave_wep" };
+    }
+  }
+  if (bytesQR(textoWifiQR({ red: nombre, clave, seguridad, oculta })) > QR_WIFI_MAXIMO_BYTES) {
+    return { ok: false, codigo: "wifi_muy_largo" };
+  }
+  return { ok: true };
+}
+
+const MENSAJES_WIFI_QR = Object.freeze({
+  wifi_red_vacia: "Escribe el nombre de la red.",
+  wifi_red_larga: "El nombre de la red es demasiado largo: una red Wi‑Fi admite hasta 32 caracteres (menos si lleva acentos o ñ).",
+  wifi_clave_vacia: "Escribe la contraseña de la red, o elige «Sin contraseña» si es abierta.",
+  wifi_clave_wpa: "Una contraseña WPA tiene de 8 a 63 caracteres. Revisa que esté completa.",
+  wifi_clave_wep: "Una contraseña WEP tiene 5 o 13 caracteres (o 10 o 26 hexadecimales).",
+  wifi_seguridad: "Elige el tipo de seguridad de la red.",
+  wifi_muy_largo: "La red y la contraseña juntas son demasiado largas para un QR que se lea bien. "
+    + "Los símbolos ; , : \" y \\ cuentan doble.",
+});
+
+// El archivo descargado lleva el nombre de la red: "qr-wifi-cafe-centro.png".
+function nombreArchivoWifiQR(red) {
+  const slug = String(red ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/, "");
+  return slug ? `qr-wifi-${slug}` : "qr-wifi";
+}
+
 // Los códigos de crear-qr y de _shared/revisarEnlace.mjs, en palabras.
 const MENSAJES_ERROR_QR = Object.freeze({
   enlace_vacio: "Escribe el link al que debe llevar el QR.",
@@ -370,6 +453,10 @@ if (typeof module === "object" && module.exports) {
     textoCupoQR,
     validarFormularioQR,
     validarNombreQR,
+    MENSAJES_WIFI_QR,
+    textoWifiQR,
+    validarWifiQR,
+    nombreArchivoWifiQR,
     mensajeErrorQR,
     ladoInsigniaQR,
     alineacionesQR,

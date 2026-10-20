@@ -103,6 +103,80 @@ test("renaming trims the name, treats blank as no name and rejects more than 80 
   assert.deepEqual(nucleo.validarNombreQR("x".repeat(81)), { ok: false, codigo: "titulo_largo" });
 });
 
+/* QR de Wi‑Fi: se arma en el navegador, nunca pasa por el servidor. */
+
+test("a Wi-Fi QR carries the network in the WIFI: format phones read", () => {
+  assert.equal(nucleo.textoWifiQR({ red: "Casa", clave: "secreta123", seguridad: "WPA" }),
+    "WIFI:T:WPA;S:Casa;P:secreta123;;");
+  assert.equal(nucleo.textoWifiQR({ red: "Casa", clave: "12345", seguridad: "WEP" }),
+    "WIFI:T:WEP;S:Casa;P:12345;;");
+  assert.equal(nucleo.textoWifiQR({ red: "Café", clave: "ignorada", seguridad: "nopass" }),
+    "WIFI:T:nopass;S:Café;;", "una red abierta no lleva contraseña");
+  assert.equal(nucleo.textoWifiQR({ red: "Oculta", clave: "secreta123", seguridad: "WPA", oculta: true }),
+    "WIFI:T:WPA;S:Oculta;P:secreta123;H:true;;");
+});
+
+test("Wi-Fi names and passwords escape the characters the format reserves", () => {
+  assert.equal(nucleo.textoWifiQR({ red: 'a;b,c:d"e\\f', clave: "p;a:s,s\"\\", seguridad: "WPA" }),
+    'WIFI:T:WPA;S:a\\;b\\,c\\:d\\"e\\\\f;P:p\\;a\\:s\\,s\\"\\\\;;');
+});
+
+test("the Wi-Fi form checks the limits of 802.11 before drawing", () => {
+  const wpa = (clave) => nucleo.validarWifiQR({ red: "Casa", clave, seguridad: "WPA" });
+  const wep = (clave) => nucleo.validarWifiQR({ red: "Casa", clave, seguridad: "WEP" });
+
+  assert.deepEqual(nucleo.validarWifiQR({ red: "", clave: "secreta123", seguridad: "WPA" }),
+    { ok: false, codigo: "wifi_red_vacia" });
+  assert.deepEqual(nucleo.validarWifiQR({ red: "x".repeat(32), clave: "", seguridad: "nopass" }), { ok: true });
+  assert.deepEqual(nucleo.validarWifiQR({ red: "x".repeat(33), clave: "", seguridad: "nopass" }),
+    { ok: false, codigo: "wifi_red_larga" });
+  assert.deepEqual(nucleo.validarWifiQR({ red: "ñ".repeat(17), clave: "", seguridad: "nopass" }),
+    { ok: false, codigo: "wifi_red_larga" }, "el límite son 32 bytes: la ñ ocupa dos");
+  assert.deepEqual(nucleo.validarWifiQR({ red: " Casa ", clave: "", seguridad: "nopass" }), { ok: true },
+    "el nombre no se recorta: un espacio puede ser parte de la red");
+
+  assert.deepEqual(wpa(""), { ok: false, codigo: "wifi_clave_vacia" });
+  assert.deepEqual(wpa("1234567"), { ok: false, codigo: "wifi_clave_wpa" });
+  assert.deepEqual(wpa("12345678"), { ok: true });
+  assert.deepEqual(wpa("x".repeat(63)), { ok: true });
+  assert.deepEqual(wpa("x".repeat(64)), { ok: false, codigo: "wifi_clave_wpa" });
+  assert.deepEqual(wpa("ab".repeat(32)), { ok: true }, "64 hexadecimales son la clave en crudo");
+
+  assert.deepEqual(wep(""), { ok: false, codigo: "wifi_clave_vacia" });
+  for (const clave of ["12345", "x".repeat(13), "a1".repeat(5), "F0".repeat(13)]) {
+    assert.deepEqual(wep(clave), { ok: true }, clave);
+  }
+  for (const clave of ["1234", "x".repeat(10), "x".repeat(26)]) {
+    assert.deepEqual(wep(clave), { ok: false, codigo: "wifi_clave_wep" }, clave);
+  }
+
+  assert.deepEqual(nucleo.validarWifiQR({ red: "Casa", clave: "", seguridad: "nopass" }), { ok: true });
+  assert.deepEqual(nucleo.validarWifiQR({ red: "Casa", clave: "x", seguridad: "WPA3" }),
+    { ok: false, codigo: "wifi_seguridad" });
+});
+
+test("a Wi-Fi QR that would not fit in version 10 is rejected, because larger dotted QRs were not read", () => {
+  const maxima = { red: "x".repeat(32), clave: "y".repeat(63), seguridad: "WPA" };
+  assert.deepEqual(nucleo.validarWifiQR(maxima), { ok: true }, "red y contraseña al máximo sin símbolos: 113 bytes");
+  assert.deepEqual(nucleo.validarWifiQR({ ...maxima, oculta: true }), { ok: false, codigo: "wifi_muy_largo" },
+    "H:true suma 7 bytes: 120");
+  assert.deepEqual(nucleo.validarWifiQR({ ...maxima, clave: ";".repeat(63) }),
+    { ok: false, codigo: "wifi_muy_largo" }, "cada símbolo reservado ocupa dos bytes al escaparse");
+  assert.deepEqual(nucleo.validarWifiQR({ ...maxima, red: "ñ".repeat(16) }), { ok: true });
+});
+
+test("every Wi-Fi check has a message in Spanish", () => {
+  for (const codigo of ["wifi_red_vacia", "wifi_red_larga", "wifi_clave_vacia", "wifi_clave_wpa", "wifi_clave_wep", "wifi_seguridad", "wifi_muy_largo"]) {
+    assert.match(nucleo.MENSAJES_WIFI_QR[codigo] ?? "", /\S/, codigo);
+  }
+});
+
+test("the Wi-Fi download is named after the network, without accents or symbols", () => {
+  assert.equal(nucleo.nombreArchivoWifiQR("Café Ñandú 2.4G"), "qr-wifi-cafe-nandu-2-4g");
+  assert.equal(nucleo.nombreArchivoWifiQR("  ***  "), "qr-wifi");
+  assert.equal(nucleo.nombreArchivoWifiQR("x".repeat(60)), `qr-wifi-${"x".repeat(40)}`);
+});
+
 test("every rejection code the server can send has a message in Spanish", () => {
   /*
     Los códigos se leen del código fuente del servidor, no de una lista a mano:
