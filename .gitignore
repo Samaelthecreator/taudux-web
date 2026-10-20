@@ -52,3 +52,5 @@ qr-redireccion/.env*
 # Basura del sistema operativo
 .DS_Store
 Thumbs.db
+
+odd/
