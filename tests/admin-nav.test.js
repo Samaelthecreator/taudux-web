@@ -114,24 +114,34 @@ test("all three admin pages carry the star background", () => {
   assert.match(css, /#particles-fondo\s*\{[^}]*position:\s*fixed[^}]*z-index:\s*var\(--z-behind\)[^}]*pointer-events:\s*none/);
 });
 
-test("the QR table puts «Creado por» first and shows each destination in a read-only field", () => {
+test("the QR table puts «Creado por» first and shows each destination as plain text that copies on click", () => {
   const html = sinComentarios(read("src/app/features/qr/admin.html"));
   const columnas = [...html.matchAll(/<th scope="col">([^<]+)<\/th>/g)].map((m) => m[1]);
   assert.equal(columnas[0], "Creado por");
   assert.deepEqual(columnas.slice(1, 3), ["QR", "Destino"]);
 
   const js = read("src/app/features/qr/admin.js");
-  assert.match(js, /destino\.readOnly = true/);
-  assert.match(js, /nodo\("input", null, "field qr-admin__destino"\)/);
-  assert.match(js, /focusin[\s\S]*\.select\(\)/);
+  // Texto, no un campo de entrada ni un enlace.
+  assert.match(js, /const destino = nodo\("span", qr\.destino, "qr-admin__destino"\)/);
+  assert.doesNotMatch(js, /readOnly/);
+  assert.match(js, /destino\.tabIndex = 0/);
+  // Un clic (o Enter) en el destino o en el link corto lo selecciona y lo copia.
+  assert.match(js, /destino\.dataset\.accion = "copiar-destino"/);
+  assert.match(js, /codigo\.dataset\.accion = "copiar-link"/);
+  assert.match(js, /accion === "copiar-destino" && qr\) return copiarConAvisoQR\(objetivo, qr\.destino/);
+  assert.match(js, /accion === "copiar-link" && qr\) return copiarConAvisoQR\(objetivo, urlCortaQR\(qr\.codigo\)/);
+  assert.match(read("src/app/features/qr/admin.html"),
+    /qr\.nucleo\.js"><\/script>\s*<script src="\/app\/features\/qr\/qr\.portapapeles\.js"><\/script>\s*<script src="\/app\/features\/qr\/admin\.js"/);
   // El orden de las celdas sigue al de los encabezados.
-  assert.match(js, /tr\.append\(\s*celda\(creador[\s\S]*?celda\(nodo\("strong", urlVisibleQR[\s\S]*?celda\(destino\)/);
+  assert.match(js, /tr\.append\(\s*celda\(creador[\s\S]*?celda\(codigo,[\s\S]*?celda\(destino\)/);
   // La búsqueda lee el dato, no el nodo.
   assert.match(js, /\[qr\.codigo, qr\.titulo, qr\.destino, nombreDe\(qr\), qr\.usuario_id\]/);
 
   const css = read("src/app/features/qr/qr.css");
   const bloque = css.match(/\.qr-admin__destino\s*\{([^}]*)\}/)?.[1] ?? "";
   assert.match(bloque, /inline-size:\s*11\.5rem/);
+  // El link completo, en varias líneas: nada de «…».
+  assert.match(bloque, /overflow-wrap:\s*anywhere/);
   assert.ok(!/text-overflow/.test(bloque));
 });
 
