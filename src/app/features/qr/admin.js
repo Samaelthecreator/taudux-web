@@ -8,11 +8,13 @@
   con el `usuario_id`, que sí se muestra.
 
   El destino se muestra como TEXTO, no como enlace: esta pantalla existe para
-  revisar links sospechosos, y un clic distraído no debe abrir uno. Va en un
-  campo de sólo lectura que se selecciona entero al enfocarlo.
+  revisar links sospechosos, y un clic distraído no debe abrir uno. Va como
+  texto completo que un clic selecciona entero y copia; el link corto también
+  se copia con un clic.
 
   Depende de: supabase-client.js, auth.service.js, telemetry/operaciones.js,
-  toast.js, confirm-dialog.js, admin-startup.js y qr.nucleo.js.
+  toast.js, confirm-dialog.js, admin-startup.js, qr.nucleo.js y
+  qr.portapapeles.js.
 */
 (() => {
   "use strict";
@@ -146,18 +148,26 @@
     const tienePerfil = estado.perfiles.has(qr.usuario_id);
     const tr = document.createElement("tr");
 
-    // Campo de sólo lectura y no un enlace: se revisa el link completo y se
-    // copia con un clic (focusin lo selecciona), sin riesgo de abrirlo.
-    const destino = nodo("input", null, "field qr-admin__destino");
-    destino.type = "text";
-    destino.readOnly = true;
-    destino.value = qr.destino;
-    destino.title = qr.destino;
+    // Texto y no un enlace: se revisa el link completo y un clic lo
+    // selecciona y lo copia, sin riesgo de abrirlo.
+    const destino = nodo("span", qr.destino, "qr-admin__destino");
+    destino.tabIndex = 0;
+    destino.title = `Copiar ${qr.destino}`;
+    destino.dataset.accion = "copiar-destino";
+    destino.dataset.id = String(qr.id);
     destino.setAttribute("aria-label", `Destino de ${urlVisibleQR(qr.codigo)}`);
 
     // La insignia se decide por el ID de la cuenta, no por el nombre: dos
     // cuentas pueden llamarse igual.
     const esAdmin = estado.perfiles.get(qr.usuario_id)?.rol === "admin";
+
+    // El link corto también se copia con un clic (aunque el QR esté apagado:
+    // quien modera lo necesita para buscarlo o probarlo).
+    const codigo = nodo("span", urlVisibleQR(qr.codigo), "qr-admin__codigo");
+    codigo.tabIndex = 0;
+    codigo.title = `Copiar ${urlCortaQR(qr.codigo)}`;
+    codigo.dataset.accion = "copiar-link";
+    codigo.dataset.id = String(qr.id);
     const creador = nodo("span", nombreDe(qr));
 
     const cuenta = [];
@@ -194,7 +204,7 @@
 
     tr.append(
       celda(creador, esAdmin && nodo("span", "Admin", "admin-insignia"), ...cuenta),
-      celda(nodo("strong", urlVisibleQR(qr.codigo)), secundario(qr.titulo || "Sin nombre")),
+      celda(codigo, secundario(qr.titulo || "Sin nombre")),
       celda(destino),
       celdaEstado(qr, estadoActual, ahora),
       celda(nodo("span", String(qr.escaneos))),
@@ -333,6 +343,9 @@
     if (!objetivo) return;
     const { accion, id, usuario } = objetivo.dataset;
     const qr = estado.qrs.find((otro) => String(otro.id) === id);
+    // Copiar no se bloquea: es instantáneo y no toca la base.
+    if (accion === "copiar-destino" && qr) return copiarConAvisoQR(objetivo, qr.destino, "Link");
+    if (accion === "copiar-link" && qr) return copiarConAvisoQR(objetivo, urlCortaQR(qr.codigo), "Link del QR");
     objetivo.disabled = true;
     try {
       if (accion === "copiar-id") {
@@ -375,9 +388,12 @@
       }
     });
     el("qrAdminFilas").addEventListener("click", alHacerClick);
-    // Un clic en el destino lo selecciona entero, listo para copiar.
-    el("qrAdminFilas").addEventListener("focusin", (evento) => {
-      if (evento.target.matches?.(".qr-admin__destino")) evento.target.select();
+    // El destino y el link corto no son botones: Enter los copia igual que el clic.
+    el("qrAdminFilas").addEventListener("keydown", (evento) => {
+      const copiable = evento.target.closest('[data-accion="copiar-destino"], [data-accion="copiar-link"]');
+      if (evento.key !== "Enter" || !copiable) return;
+      evento.preventDefault();
+      alHacerClick({ target: copiable });
     });
   }
 

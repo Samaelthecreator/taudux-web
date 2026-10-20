@@ -11,7 +11,7 @@
   QR solo por volver: la persona aprieta el botón otra vez.
 
   Depende de: supabase-client.js, auth.service.js, toast.js, confirm-dialog.js,
-  qrcode-generator (jsDelivr), qr.nucleo.js y qr.imagen.js.
+  qrcode-generator (jsDelivr), qr.nucleo.js, qr.portapapeles.js y qr.imagen.js.
 */
 (() => {
   "use strict";
@@ -184,11 +184,24 @@
     campo("editor").hidden = !editando;
     if (editando) campo("editor").querySelector("input").value = estado.editando.valor;
     campo("destino").textContent = qr.destino;
-    campo("destino").title = qr.destino;
+    campo("destino").title = `Copiar ${qr.destino}`;
     const link = campo("link");
     link.textContent = urlVisibleQR(qr.codigo);
-    link.disabled = !esActivo;
-    link.title = esActivo ? "Ver en el marco" : "Este QR ya no funciona";
+    // El link corto se copia como el destino; al marco se llega con la fila.
+    // Uno vencido o bloqueado no se ofrece: copiar un link muerto no sirve.
+    if (esActivo) {
+      link.dataset.accion = "copiar-link";
+      link.tabIndex = 0;
+      link.removeAttribute("aria-disabled");
+    } else {
+      delete link.dataset.accion;
+      link.removeAttribute("tabindex");
+      link.setAttribute("aria-disabled", "true");
+    }
+    link.title = esActivo ? `Copiar ${urlCortaQR(qr.codigo)}` : "Este QR ya no funciona";
+    // Sin mouse, la fila activa se elige con Enter o Espacio.
+    if (esActivo) fila.tabIndex = 0;
+    else fila.removeAttribute("tabindex");
     const insignia = campo("estado");
     insignia.textContent = ESTADOS[estadoActual];
     insignia.dataset.estado = estadoActual;
@@ -451,17 +464,46 @@
     }
   }
 
+  function verEnMarco(qr) {
+    estado.enMarco = qr.codigo;
+    pintar();
+    el("qrMarco").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // El destino y el link corto se copian con un clic (qr.portapapeles.js).
+  function copiar(qr, nodo) {
+    return nodo.dataset.accion === "copiar-link"
+      ? copiarConAvisoQR(nodo, urlCortaQR(qr.codigo), "Link del QR")
+      : copiarConAvisoQR(nodo, qr.destino, "Link");
+  }
+
+  // Dónde empezó el clic: si el puntero se movió, era alguien seleccionando
+  // texto con el mouse, no eligiendo la fila.
+  let inicioClic = null;
+
+  // Clic en la fila (fuera de sus botones y campos): el QR va al marco para
+  // volver a descargarlo. Sólo los activos; uno vencido o bloqueado no se dibuja.
+  function elegirFila(evento, qr) {
+    if (evento.target.closest("button, input, form, a")) return;
+    const arrastre = inicioClic &&
+      Math.hypot(evento.clientX - inicioClic.x, evento.clientY - inicioClic.y) > 5;
+    if (arrastre || !activo(qr)) return;
+    verEnMarco(qr);
+  }
+
   async function alHacerClickEnTabla(evento) {
+    const qr = qrDeFila(evento.target);
+    if (!qr) return;
     const boton = evento.target.closest("[data-accion]");
-    const fila = boton?.closest("[data-id]");
-    const qr = fila && estado.qrs.find((otro) => String(otro.id) === fila.dataset.id);
-    if (!qr || boton.disabled) return;
+    if (!boton) {
+      elegirFila(evento, qr);
+      return;
+    }
+    if (boton.disabled) return;
 
     try {
-      if (boton.dataset.accion === "ver") {
-        estado.enMarco = qr.codigo;
-        pintar();
-        el("qrMarco").scrollIntoView({ behavior: "smooth", block: "center" });
+      if (boton.dataset.accion === "copiar-destino" || boton.dataset.accion === "copiar-link") {
+        await copiar(qr, boton);
       } else if (boton.dataset.accion === "descargar") {
         boton.disabled = true;
         try {
@@ -494,6 +536,21 @@
     });
     el("qrFilas").addEventListener("keydown", (evento) => {
       if (evento.key === "Escape" && evento.target.closest(".qr__tabla-editor")) cerrarEditorNombre();
+      // El destino y el link corto son <span> enfocables, no botones: Enter
+      // los copia igual que el clic. Enter o Espacio sobre la fila la elige.
+      const qr = qrDeFila(evento.target);
+      if (!qr) return;
+      const copiable = evento.target.closest('[data-accion="copiar-destino"], [data-accion="copiar-link"]');
+      if (evento.key === "Enter" && copiable) {
+        evento.preventDefault();
+        copiar(qr, copiable);
+      } else if ((evento.key === "Enter" || evento.key === " ") && evento.target.matches("tr") && activo(qr)) {
+        evento.preventDefault();
+        verEnMarco(qr);
+      }
+    });
+    el("qrFilas").addEventListener("pointerdown", (evento) => {
+      inicioClic = { x: evento.clientX, y: evento.clientY };
     });
 
     el("qrMarcoDescargar").addEventListener("click", alternarMenu);

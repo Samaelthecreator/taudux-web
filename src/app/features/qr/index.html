@@ -278,8 +278,8 @@
           <button type="button" class="qr__tabla-icono" data-accion="cancelar-nombre"
             aria-label="Cancelar">✕</button>
         </form>
-        <span class="qr__tabla-destino" data-qr="destino"></span>
-        <button type="button" class="qr__tabla-codigo" data-accion="ver" data-qr="link"></button>
+        <span class="qr__tabla-destino" data-qr="destino" data-accion="copiar-destino" tabindex="0"></span>
+        <span class="qr__tabla-codigo" data-qr="link"></span>
       </td>
       <td data-etiqueta="Estado">
         <span class="qr__insignia" data-qr="estado"></span>
@@ -306,6 +306,7 @@
     integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA"
     crossorigin="anonymous"></script>
   <script src="/app/features/qr/qr.nucleo.js"></script>
+  <script src="/app/features/qr/qr.portapapeles.js"></script>
   <script src="/app/features/qr/qr.imagen.js"></script>
   <script src="/app/features/qr/qr.js"></script>
 
