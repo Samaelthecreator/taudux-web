@@ -779,9 +779,13 @@
         return;
       }
       estado.sesion = sesion;
-      // Sin botón «Moderación» desde el 2026-10-02: la moderación se abre desde
-      // Administración (menú de la cuenta → QR), así que acá no hace falta
-      // preguntar si quien entra es administrador.
+      // El QR de Wi‑Fi es sólo para administradores (decisión del 2026-10-24).
+      // Es una puerta de UX y nada más: ese QR se arma en el navegador y no toca
+      // la base, así que no hay nada que proteger del otro lado. Si la consulta
+      // del rol falla, las pestañas se quedan ocultas.
+      esAdmin(sesion)
+        .then((admin) => { el("qrPestanas").hidden = !admin; })
+        .catch(() => {});
       await cargar();
       pintar();
       setInterval(tic, INTERVALO_RELOJ_MS);

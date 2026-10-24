@@ -48,15 +48,12 @@
         <p class="qr__intro">
           Convierte el link de tu formulario, tu página o tu evento en un código QR
           con el sello de Taudux. Pégalo abajo, genera el QR y descárgalo para
-          imprimirlo, compartirlo o mostrarlo en pantalla. También puedes crear
-          uno para que tus invitados se conecten a tu Wi‑Fi sin escribir la contraseña.
+          imprimirlo, compartirlo o mostrarlo en pantalla.
         </p>
         <ul class="qr__beneficios">
           <li><strong>Revisado con Google.</strong> Cada link pasa por Google Web Risk antes de convertirse en QR.</li>
           <li><strong>Gratis con tu cuenta.</strong> Hasta 5 QR activos a la vez; cada uno dura 7 días.</li>
-          <li><strong>Listo para usar.</strong> Descárgalo en PNG o SVG, compártelo o proyéctalo en pantalla completa.</li>
-          <li><strong>También tu Wi‑Fi.</strong> Sin cuenta: el QR se crea en tu dispositivo y la contraseña nunca sale de él.</li>
-        </ul>
+          <li><strong>Listo para usar.</strong> Descárgalo en PNG o SVG, compártelo o proyéctalo en pantalla completa.</li>        </ul>
       </header>
 
       <noscript>
@@ -67,7 +64,9 @@
       <section class="qr__generador panel" aria-labelledby="qrTituloGenerar">
         <div class="qr__generador-formulario">
           <h2 class="qr__subtitulo" id="qrTituloGenerar">Crea tu QR</h2>
-          <div class="qr__pestanas" role="tablist" aria-label="Tipo de QR">
+          <!-- Las pestañas sólo aparecen a administradores (qr.js → iniciar):
+               el QR de Wi‑Fi no está abierto a todas las cuentas. -->
+          <div class="qr__pestanas" id="qrPestanas" role="tablist" aria-label="Tipo de QR" hidden>
             <button type="button" class="qr__pestana" role="tab" id="qrPestanaEnlace"
               aria-selected="true" aria-controls="qrFormulario" data-modo="enlace">Enlace</button>
             <button type="button" class="qr__pestana" role="tab" id="qrPestanaWifi"
@@ -210,8 +209,7 @@
         </p>
         <p>
           También crea QR de Wi‑Fi. Ese QR se arma en tu dispositivo con la red y
-          la contraseña que escribas, y no pasa por go.taudux.com: no necesita
-          cuenta, Taudux no recibe ni guarda esos datos, y no vence ni se puede
+          la contraseña que escribas, y no pasa por go.taudux.com: Taudux no recibe ni guarda esos datos, y no vence ni se puede
           bloquear. Estos términos, salvo las secciones 1, 3, 8 y 10, aplican sólo
           a los QR de enlace.
         </p>

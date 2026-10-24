@@ -162,7 +162,16 @@ test("the QR generator no longer links to moderation: it lives under Administrac
   const js = read("src/app/features/qr/qr.js");
   assert.ok(!/qrModeracion/.test(html + js), "sin botón «Moderación»");
   assert.ok(!/qr\/admin\.html/.test(html), "el generador no enlaza a la moderación");
-  assert.ok(!/esAdmin\(/.test(js), "ya no pregunta si quien entra es administrador");
+  // 2026-10-24: el rol sí se pregunta, pero sólo para mostrar el QR de Wi‑Fi.
+  assert.equal((js.match(/esAdmin\(/g) || []).length, 1, "una sola consulta del rol");
+  assert.match(js, /esAdmin\(sesion\)\s*\.then\(\(admin\) => \{ el\("qrPestanas"\)\.hidden = !admin; \}\)/);
+});
+
+test("the Wi-Fi QR is only for administrators: its tabs start hidden and are not advertised", () => {
+  const html = read("src/app/features/qr/index.html");
+  assert.match(html, /<div class="qr__pestanas" id="qrPestanas" role="tablist"[^>]*\shidden>/);
+  assert.match(html, /<form class="qr__formulario" id="qrFormularioWifi"[^>]*\shidden>/);
+  assert.ok(!/También tu Wi‑Fi|no necesita\s+cuenta/.test(html), "el copy público no ofrece el Wi‑Fi sin cuenta");
 });
 
 test("the admin layout's display does not defeat its hidden attribute", () => {
