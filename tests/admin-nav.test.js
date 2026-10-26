@@ -171,7 +171,7 @@ test("the Wi-Fi QR is only for administrators: its tabs start hidden and are not
   const html = read("src/app/features/qr/index.html");
   assert.match(html, /<div class="qr__pestanas" id="qrPestanas" role="tablist"[^>]*\shidden>/);
   assert.match(html, /<form class="qr__formulario" id="qrFormularioWifi"[^>]*\shidden>/);
-  assert.ok(!/También tu Wi‑Fi|no necesita\s+cuenta/.test(html), "el copy público no ofrece el Wi‑Fi sin cuenta");
+  assert.ok(!/También tu Wi‑Fi|no necesita\s+cuenta/i.test(html), "el copy público no ofrece el Wi‑Fi sin cuenta");
 });
 
 test("the admin layout's display does not defeat its hidden attribute", () => {
