@@ -10,6 +10,11 @@
   va al login y se vuelve con el link ya escrito (?destino=). Nunca se crea un
   QR solo por volver: la persona aprieta el botón otra vez.
 
+  La pestaña Wi‑Fi es otra cosa: el QR se arma acá (textoWifiQR) y no toca la
+  red, así que funciona sin sesión. La red y la contraseña viven sólo en
+  `estado.wifi`: nada de eso va al DOM fuera del formulario, ni a la URL, ni a
+  localStorage, ni al portapapeles.
+
   Depende de: supabase-client.js, auth.service.js, toast.js, confirm-dialog.js,
   qrcode-generator (jsDelivr), qr.nucleo.js, qr.portapapeles.js y qr.imagen.js.
 */
@@ -37,9 +42,13 @@
   const el = (id) => document.getElementById(id);
   // editando: { id, valor } del QR cuyo nombre se está escribiendo. Vive acá y
   // no en el DOM porque tic() puede repintar la tabla entera a mitad de edición.
+  // modo: la pestaña elegida ("enlace" | "wifi"). wifi: el último QR de Wi‑Fi
+  // armado, { red, texto, etiqueta, resumen }.
   const estado = {
     sesion: null, planes: [], acceso: null, qrs: [], creando: false, enMarco: null, editando: null,
+    modo: "enlace", wifi: null,
   };
+  const SEGURIDAD_VISIBLE = Object.freeze({ WPA: "WPA", WEP: "WEP", nopass: "sin contraseña" });
 
   // --- Datos -----------------------------------------------------------------
 
@@ -116,14 +125,60 @@
     return `Venció el ${diaYHora.format(new Date(qr.vence_en))}`;
   }
 
-  function pintarMarco(ahora) {
+  /*
+    Lo que muestra el marco según la pestaña: el QR de enlace elegido (si sigue
+    activo) o el de Wi‑Fi recién armado; null si no hay nada. Descargar,
+    compartir y pantalla completa salen de acá, así que siempre usan el QR que
+    se ve. `texto` es lo que se comparte junto a la imagen: en Wi‑Fi nunca
+    lleva la contraseña.
+  */
+  function contenidoDelMarco(ahora = Date.now()) {
+    if (estado.modo === "wifi") {
+      const wifi = estado.wifi;
+      if (!wifi) return null;
+      const base = nombreArchivoWifiQR(wifi.red);
+      return {
+        clave: wifi.texto,
+        svg: () => svgQRDeTexto(wifi.texto, wifi.etiqueta),
+        png: () => pngQRBlobDeTexto(wifi.texto),
+        descargar: (formato) => descargarQRDeTexto(wifi.texto, wifi.etiqueta, base, formato),
+        archivo: `${base}.png`,
+        nombre: wifi.red,
+        link: wifi.resumen,
+        tiempo: "No vence",
+        texto: `Wi‑Fi: ${wifi.red}`,
+        url: null,
+      };
+    }
     const qr = qrPorCodigo(estado.enMarco);
-    const hayQR = activo(qr, ahora);
+    if (!activo(qr, ahora)) return null;
+    return {
+      clave: qr.codigo,
+      svg: () => svgQRDeCodigo(qr.codigo),
+      png: () => pngQRBlob(qr.codigo),
+      descargar: (formato) => (formato === "svg" ? descargarSvgQR(qr.codigo) : descargarPngQR(qr.codigo)),
+      archivo: `qr-${qr.codigo}.png`,
+      nombre: qr.titulo,
+      link: urlVisibleQR(qr.codigo),
+      tiempo: tiempoRestanteQR(qr.vence_en, ahora).texto,
+      texto: urlCortaQR(qr.codigo),
+      url: urlCortaQR(qr.codigo),
+    };
+  }
+
+  // El QR dibujado en el marco, para no redibujarlo si no cambió. Vive acá y
+  // no en un data-* porque en Wi‑Fi es el texto con la contraseña.
+  let claveDibujada = null;
+
+  function pintarMarco(ahora) {
+    const contenido = contenidoDelMarco(ahora);
+    const hayQR = Boolean(contenido);
     el("qrMarcoVacio").hidden = hayQR;
     el("qrMarcoImagen").hidden = !hayQR;
     for (const id of ["qrMarcoDescargar", "qrMarcoCompartir", "qrMarcoPantalla"]) el(id).disabled = !hayQR;
     if (!hayQR) {
       el("qrMarcoImagen").replaceChildren();
+      claveDibujada = null;
       el("qrMarcoNombre").hidden = true;
       el("qrMarcoLink").textContent = "";
       el("qrMarcoTiempo").textContent = "";
@@ -131,16 +186,16 @@
       return;
     }
     // Sólo se redibuja si cambió el QR: la cuenta regresiva no mueve el dibujo.
-    if (el("qrMarcoImagen").dataset.codigo !== qr.codigo) {
-      // El SVG lo arma svgQR(): el código es [2-9a-hjkmnp-z]{6} por constraint
-      // de la base y la etiqueta va escapada: no hay HTML ajeno que inyectar.
-      el("qrMarcoImagen").innerHTML = svgQRDeCodigo(qr.codigo);
-      el("qrMarcoImagen").dataset.codigo = qr.codigo;
+    if (claveDibujada !== contenido.clave) {
+      // El SVG lo arma svgQR(): sólo trazos numéricos y la etiqueta escapada,
+      // así que no hay HTML ajeno que inyectar (tampoco con el nombre de la red).
+      el("qrMarcoImagen").innerHTML = contenido.svg();
+      claveDibujada = contenido.clave;
     }
-    el("qrMarcoNombre").hidden = !qr.titulo;
-    el("qrMarcoNombre").textContent = qr.titulo ?? "";
-    el("qrMarcoLink").textContent = urlVisibleQR(qr.codigo);
-    el("qrMarcoTiempo").textContent = tiempoRestanteQR(qr.vence_en, ahora).texto;
+    el("qrMarcoNombre").hidden = !contenido.nombre;
+    el("qrMarcoNombre").textContent = contenido.nombre ?? "";
+    el("qrMarcoLink").textContent = contenido.link;
+    el("qrMarcoTiempo").textContent = contenido.tiempo;
   }
 
   function pintarTabla(ahora) {
@@ -234,7 +289,9 @@
       if (tiempo) tiempo.textContent = textoTiempo(qr, ahora);
     }
     const enMarco = qrPorCodigo(estado.enMarco);
-    if (enMarco) el("qrMarcoTiempo").textContent = tiempoRestanteQR(enMarco.vence_en, ahora).texto;
+    if (enMarco && estado.modo === "enlace") {
+      el("qrMarcoTiempo").textContent = tiempoRestanteQR(enMarco.vence_en, ahora).texto;
+    }
   }
 
   // --- Generar ---------------------------------------------------------------
@@ -326,28 +383,33 @@
 
   async function descargarDelMarco(formato) {
     cerrarMenu();
-    const qr = qrPorCodigo(estado.enMarco);
-    if (!activo(qr)) return;
-    if (formato === "svg") await descargarSvgQR(qr.codigo);
-    else await descargarPngQR(qr.codigo);
+    const contenido = contenidoDelMarco();
+    if (!contenido) return;
+    await contenido.descargar(formato);
   }
 
   /*
     Compartir, de mejor a peor según lo que el navegador permita: la imagen
     como archivo (celulares: WhatsApp, correo…), el link por la hoja de
     compartir del sistema, o copiar el link. Cancelar la hoja no es un error.
+    El de Wi‑Fi sólo se comparte como imagen: no hay link, y su texto lleva la
+    contraseña.
   */
   async function compartir() {
-    const qr = qrPorCodigo(estado.enMarco);
-    if (!activo(qr)) return;
-    const url = urlCortaQR(qr.codigo);
+    const contenido = contenidoDelMarco();
+    if (!contenido) return;
+    const { url } = contenido;
     try {
       if (typeof navigator.canShare === "function") {
-        const archivo = new File([await pngQRBlob(qr.codigo)], `qr-${qr.codigo}.png`, { type: "image/png" });
+        const archivo = new File([await contenido.png()], contenido.archivo, { type: "image/png" });
         if (navigator.canShare({ files: [archivo] })) {
-          await navigator.share({ files: [archivo], title: "Código QR", text: url });
+          await navigator.share({ files: [archivo], title: "Código QR", text: contenido.texto });
           return;
         }
+      }
+      if (!url) {
+        mostrarToast("Tu navegador no puede compartir la imagen. Descarga el QR y compártelo desde tus archivos.");
+        return;
       }
       if (typeof navigator.share === "function") {
         await navigator.share({ title: "Código QR", url });
@@ -363,12 +425,12 @@
   }
 
   function abrirPantallaCompleta() {
-    const qr = qrPorCodigo(estado.enMarco);
-    if (!activo(qr)) return;
-    el("qrPantallaImagen").innerHTML = svgQRDeCodigo(qr.codigo);
-    el("qrPantallaNombre").hidden = !qr.titulo;
-    el("qrPantallaNombre").textContent = qr.titulo ?? "";
-    el("qrPantallaLink").textContent = urlVisibleQR(qr.codigo);
+    const contenido = contenidoDelMarco();
+    if (!contenido) return;
+    el("qrPantallaImagen").innerHTML = contenido.svg();
+    el("qrPantallaNombre").hidden = !contenido.nombre;
+    el("qrPantallaNombre").textContent = contenido.nombre ?? "";
+    el("qrPantallaLink").textContent = contenido.link;
     const pantalla = el("qrPantalla");
     pantalla.showModal();
     // Pantalla completa de verdad donde exista la API (no en iPhone): ahí el
@@ -466,6 +528,9 @@
 
   function verEnMarco(qr) {
     estado.enMarco = qr.codigo;
+    // Elegir una fila de "Mis QR" con la pestaña Wi‑Fi abierta vuelve a Enlace:
+    // si no, el marco seguiría mostrando el de Wi‑Fi.
+    if (estado.modo !== "enlace") cambiarModo("enlace");
     pintar();
     el("qrMarco").scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -524,11 +589,111 @@
     }
   }
 
+  // --- Pestañas y QR de Wi‑Fi ------------------------------------------------
+
+  const MODOS = Object.freeze(["enlace", "wifi"]);
+
+  function cambiarModo(modo, { enfocar = false } = {}) {
+    estado.modo = modo;
+    for (const pestana of document.querySelectorAll(".qr__pestana")) {
+      const elegida = pestana.dataset.modo === modo;
+      pestana.setAttribute("aria-selected", String(elegida));
+      pestana.tabIndex = elegida ? 0 : -1;
+      if (elegida && enfocar) pestana.focus();
+    }
+    el("qrFormulario").hidden = modo !== "enlace";
+    el("qrFormularioWifi").hidden = modo !== "wifi";
+    pintarMarco(Date.now());
+  }
+
+  // Con teclado, las flechas, Inicio y Fin se mueven entre pestañas (patrón
+  // tablist de ARIA): Tab salta directo al formulario.
+  function alTeclearEnPestanas(evento) {
+    const actual = MODOS.indexOf(estado.modo);
+    const destino = {
+      ArrowRight: (actual + 1) % MODOS.length,
+      ArrowLeft: (actual - 1 + MODOS.length) % MODOS.length,
+      Home: 0,
+      End: MODOS.length - 1,
+    }[evento.key];
+    if (destino === undefined) return;
+    evento.preventDefault();
+    cambiarModo(MODOS[destino], { enfocar: true });
+  }
+
+  function avisoWifi(mensaje) {
+    el("qrWifiEstado").textContent = mensaje;
+    el("qrWifiEstado").hidden = !mensaje;
+  }
+
+  const CAMPO_DEL_ERROR_WIFI = Object.freeze({
+    wifi_red_vacia: "qrWifiRed",
+    wifi_red_larga: "qrWifiRed",
+    wifi_seguridad: "qrWifiSeguridad",
+  });
+
+  function generarWifi(evento) {
+    evento.preventDefault();
+    const datos = {
+      red: el("qrWifiRed").value,
+      clave: el("qrWifiClave").value,
+      seguridad: el("qrWifiSeguridad").value,
+      oculta: el("qrWifiOculta").checked,
+    };
+    const revision = validarWifiQR(datos);
+    if (!revision.ok) {
+      avisoWifi(MENSAJES_WIFI_QR[revision.codigo]);
+      el(CAMPO_DEL_ERROR_WIFI[revision.codigo] ?? "qrWifiClave").focus();
+      return;
+    }
+    avisoWifi("");
+    estado.wifi = {
+      red: datos.red,
+      texto: textoWifiQR(datos),
+      etiqueta: `Código QR de la red Wi‑Fi ${datos.red}`,
+      resumen: `Red Wi‑Fi · ${SEGURIDAD_VISIBLE[datos.seguridad]}${datos.oculta ? " · oculta" : ""}`,
+    };
+    pintarMarco(Date.now());
+    // En el celular el marco queda debajo del formulario: se trae a la vista.
+    el("qrMarco").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    mostrarToast("QR de Wi‑Fi listo. Ya puedes descargarlo o compartirlo.");
+  }
+
+  function alternarClaveVisible() {
+    const campo = el("qrWifiClave");
+    const mostrar = campo.type === "password";
+    campo.type = mostrar ? "text" : "password";
+    el("qrWifiVer").textContent = mostrar ? "Ocultar" : "Mostrar";
+  }
+
+  // Cambiar cualquier campo descarta el QR ya armado: si no, el marco seguiría
+  // ofreciendo uno con la contraseña vieja hasta volver a generar.
+  function alEditarWifi() {
+    avisoWifi("");
+    if (!estado.wifi) return;
+    estado.wifi = null;
+    pintarMarco(Date.now());
+  }
+
+  // Una red abierta no tiene contraseña: el campo desaparece.
+  function alCambiarSeguridad() {
+    el("qrWifiClaveGrupo").hidden = el("qrWifiSeguridad").value === "nopass";
+    alEditarWifi();
+  }
+
   // --- Arranque --------------------------------------------------------------
 
   function conectar() {
     el("qrFormulario").addEventListener("submit", generar);
     el("qrDestino").addEventListener("input", () => avisoFormulario(""));
+    for (const pestana of document.querySelectorAll(".qr__pestana")) {
+      pestana.addEventListener("click", () => cambiarModo(pestana.dataset.modo));
+    }
+    document.querySelector(".qr__pestanas").addEventListener("keydown", alTeclearEnPestanas);
+    el("qrFormularioWifi").addEventListener("submit", generarWifi);
+    el("qrFormularioWifi").addEventListener("input", alEditarWifi);
+    el("qrWifiSeguridad").addEventListener("change", alCambiarSeguridad);
+    el("qrWifiVer").addEventListener("click", alternarClaveVisible);
     el("qrFilas").addEventListener("click", alHacerClickEnTabla);
     el("qrFilas").addEventListener("submit", alEnviarNombre);
     el("qrFilas").addEventListener("input", (evento) => {
@@ -614,9 +779,13 @@
         return;
       }
       estado.sesion = sesion;
-      // Sin botón «Moderación» desde el 2026-10-02: la moderación se abre desde
-      // Administración (menú de la cuenta → QR), así que acá no hace falta
-      // preguntar si quien entra es administrador.
+      // El QR de Wi‑Fi es sólo para administradores (decisión del 2026-10-24).
+      // Es una puerta de UX y nada más: ese QR se arma en el navegador y no toca
+      // la base, así que no hay nada que proteger del otro lado. Si la consulta
+      // del rol falla, las pestañas se quedan ocultas.
+      esAdmin(sesion)
+        .then((admin) => { el("qrPestanas").hidden = !admin; })
+        .catch(() => {});
       await cargar();
       pintar();
       setInterval(tic, INTERVALO_RELOJ_MS);

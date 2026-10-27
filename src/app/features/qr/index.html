@@ -53,8 +53,7 @@
         <ul class="qr__beneficios">
           <li><strong>Revisado con Google.</strong> Cada link pasa por Google Web Risk antes de convertirse en QR.</li>
           <li><strong>Gratis con tu cuenta.</strong> Hasta 5 QR activos a la vez; cada uno dura 7 días.</li>
-          <li><strong>Listo para usar.</strong> Descárgalo en PNG o SVG, compártelo o proyéctalo en pantalla completa.</li>
-        </ul>
+          <li><strong>Listo para usar.</strong> Descárgalo en PNG o SVG, compártelo o proyéctalo en pantalla completa.</li>        </ul>
       </header>
 
       <noscript>
@@ -65,7 +64,15 @@
       <section class="qr__generador panel" aria-labelledby="qrTituloGenerar">
         <div class="qr__generador-formulario">
           <h2 class="qr__subtitulo" id="qrTituloGenerar">Crea tu QR</h2>
-          <form class="qr__formulario" id="qrFormulario" novalidate>
+          <!-- Las pestañas sólo aparecen a administradores (qr.js → iniciar):
+               el QR de Wi‑Fi no está abierto a todas las cuentas. -->
+          <div class="qr__pestanas" id="qrPestanas" role="tablist" aria-label="Tipo de QR" hidden>
+            <button type="button" class="qr__pestana" role="tab" id="qrPestanaEnlace"
+              aria-selected="true" aria-controls="qrFormulario" data-modo="enlace">Enlace</button>
+            <button type="button" class="qr__pestana" role="tab" id="qrPestanaWifi"
+              aria-selected="false" aria-controls="qrFormularioWifi" data-modo="wifi" tabindex="-1">Wi‑Fi</button>
+          </div>
+          <form class="qr__formulario" id="qrFormulario" role="tabpanel" aria-labelledby="qrPestanaEnlace" novalidate>
             <label class="qr__etiqueta" for="qrDestino">Link de destino</label>
             <div class="qr__barra">
               <input class="field qr__barra-campo" type="url" id="qrDestino" name="destino" inputmode="url"
@@ -87,6 +94,39 @@
             <p class="qr__aviso" id="qrLimite" role="status" hidden></p>
             <p class="qr__legal">
               Al generar un QR aceptas los <a href="#terminos">términos y condiciones</a> del servicio.
+            </p>
+          </form>
+          <!-- El QR de Wi‑Fi se arma acá mismo (qr.nucleo.js): nada de este
+               formulario se manda al servidor, ni se guarda. -->
+          <form class="qr__formulario" id="qrFormularioWifi" role="tabpanel" aria-labelledby="qrPestanaWifi"
+            novalidate hidden>
+            <label class="qr__etiqueta" for="qrWifiRed">Nombre de la red</label>
+            <input class="field" type="text" id="qrWifiRed" name="red" autocomplete="off"
+              spellcheck="false" autocapitalize="off" placeholder="Como aparece en tu teléfono: Casa_5G">
+            <label class="qr__etiqueta" for="qrWifiSeguridad">Seguridad</label>
+            <select class="field" id="qrWifiSeguridad" name="seguridad">
+              <option value="WPA" selected>WPA, WPA2 o WPA3 (la más común)</option>
+              <option value="WEP">WEP</option>
+              <option value="nopass">Sin contraseña</option>
+            </select>
+            <div class="qr__wifi-clave" id="qrWifiClaveGrupo">
+              <label class="qr__etiqueta" for="qrWifiClave">Contraseña</label>
+              <div class="qr__barra">
+                <input class="field qr__barra-campo" type="password" id="qrWifiClave" name="clave"
+                  autocomplete="off" spellcheck="false" autocapitalize="off">
+                <button type="button" class="button button--outline qr__wifi-ver" id="qrWifiVer"
+                  aria-controls="qrWifiClave">Mostrar</button>
+              </div>
+            </div>
+            <label class="qr__wifi-oculta">
+              <input type="checkbox" id="qrWifiOculta" name="oculta">
+              Es una red oculta <span class="qr__opcional">(no aparece en la lista de redes)</span>
+            </label>
+            <p class="qr__aviso qr__aviso--error" id="qrWifiEstado" role="alert" hidden></p>
+            <button type="submit" class="button button--glow qr__wifi-generar">Generar QR</button>
+            <p class="qr__nota">
+              Se crea en tu dispositivo: la red y la contraseña no se envían a Taudux.
+              No vence y no aparece en «Mis QR».
             </p>
           </form>
         </div>
@@ -159,7 +199,7 @@
       <!-- 4. Términos y condiciones -->
       <section class="qr__terminos panel" id="terminos" aria-labelledby="qrTituloTerminos">
         <h2 class="qr__subtitulo" id="qrTituloTerminos">Términos y condiciones del Generador de QR</h2>
-        <p class="qr__terminos-fecha">Última actualización: 28 de septiembre de 2026</p>
+        <p class="qr__terminos-fecha">Última actualización: 20 de octubre de 2026</p>
 
         <h3>1. El servicio</h3>
         <p>
@@ -167,10 +207,16 @@
           elijas, a través de una dirección corta de Taudux (go.taudux.com). Lo
           opera René Samael Flores Ortega bajo la marca Taudux ("Taudux").
         </p>
+        <p>
+          También crea QR de Wi‑Fi. Ese QR se arma en tu dispositivo con la red y
+          la contraseña que escribas, y no pasa por go.taudux.com: Taudux no recibe ni guarda esos datos, y no vence ni se puede
+          bloquear. Estos términos, salvo las secciones 1, 3, 8 y 10, aplican sólo
+          a los QR de enlace.
+        </p>
 
         <h3>2. Tu cuenta</h3>
         <p>
-          Para crear QR necesitas una cuenta de Taudux con el correo confirmado.
+          Para crear QR de enlace necesitas una cuenta de Taudux con el correo confirmado.
           Cada QR queda asociado a la cuenta que lo creó, y eres responsable de los
           QR que se creen con tu cuenta y de los sitios a los que llevan.
         </p>
