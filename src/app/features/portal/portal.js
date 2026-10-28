@@ -287,10 +287,19 @@
           return;
         }
 
-        await cerrarSesion({ scope: "others" });
+        // Por la base, para que queden como «Cerrada por ti» (L30); con
+        // respaldo de Supabase si la RPC falla (L33). La re-autenticación de
+        // arriba creó una sesión nueva, así que la anterior de este mismo
+        // equipo también se cierra.
+        const cierre = await cerrarLasDemasSesiones();
         limpiarFormularioContrasena(form);
         ocultarErrorContrasena(form, estado);
-        mostrarToast("Contraseña actualizada. Cerramos tus otras sesiones.", "success");
+        document.dispatchEvent(new CustomEvent("sesiones:cambiaron"));
+        if (cierre.ok) {
+          mostrarToast("Contraseña actualizada. Cerramos tus otras sesiones.", "success");
+        } else {
+          mostrarToast("Contraseña actualizada. No pudimos cerrar tus otras sesiones.", "warning");
+        }
       } finally {
         establecerFormularioOcupado(form, false);
       }
@@ -441,6 +450,7 @@
     if (email) email.value = session.user.email || "";
 
     configurarFormularioContrasena(session);
+    configurarSesionesActivas(session);
     configurarCierreSesion();
     configurarEliminarCuenta(session);
   }

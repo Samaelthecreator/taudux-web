@@ -239,6 +239,330 @@
   display: none;
 }
 
+/*
+  «Sesiones activas» (T5 de sesiones-activas). Lista y detalle comparten el
+  bloque; el detalle reemplaza a la lista en el mismo lugar.
+*/
+.sesiones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-block-start: 1.5rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.sesiones #sesionesLista,
+.sesiones #sesionesDetalle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.sesiones #sesionesLista[hidden],
+.sesiones #sesionesDetalle[hidden] {
+  display: none;
+}
+
+.sesiones__titulo:focus {
+  outline: none;
+}
+
+.sesiones__subtitulo {
+  font-size: 1rem;
+}
+
+.sesiones__aviso {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-field);
+  background-color: color-mix(in srgb, var(--color-warning) 12%, transparent);
+}
+
+.sesiones__aviso[hidden] {
+  display: none;
+}
+
+.sesiones__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sesiones__grupo-titulo {
+  color: var(--color-text-subtle);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sesiones__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sesiones__fila,
+.sesiones__item--cerrada {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  inline-size: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field);
+  background-color: var(--color-field);
+  color: var(--color-text);
+  font: inherit;
+  text-align: start;
+}
+
+.sesiones__fila {
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.sesiones__fila:hover {
+  border-color: var(--color-accent);
+}
+
+.sesiones__fila:focus-visible,
+.sesiones__volver:focus-visible,
+.sesiones__plegable-resumen:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.sesiones__icono {
+  flex: 0 0 auto;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  color: var(--color-text-muted);
+}
+
+/* min-inline-size: 0 deja que un nombre largo se parta en vez de empujar la fila. */
+.sesiones__datos {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.sesiones__nombre {
+  font-weight: 700;
+}
+
+.sesiones__meta {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.sesiones__motivo {
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+.sesiones__flecha {
+  flex: 0 0 auto;
+  color: var(--color-text-subtle);
+  font-size: 1.25rem;
+}
+
+.sesiones__insignia {
+  flex: 0 0 auto;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.sesiones__insignia--activa {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.sesiones__insignia--sin-senal,
+.sesiones__insignia--pestana-cerrada {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.sesiones__plegable-resumen {
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.sesiones__plegable[open] > .sesiones__plegable-resumen {
+  margin-block-end: 0.5rem;
+}
+
+.sesiones__mas {
+  margin-block-start: 0.5rem;
+}
+
+.sesiones__estados {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field);
+}
+
+.sesiones__estados-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.sesiones__volver {
+  align-self: flex-start;
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sesiones__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sesiones__cabecera .sesiones__nombre {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/*
+  Barra «Vida de esta sesión»: tres tramos de igual ancho y la marca «Ahora»
+  colocada por JS (style.insetInlineStart). Los hitos debajo son el mismo
+  contenido en texto; la barra lleva su resumen en aria-label.
+*/
+.sesiones__barra {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  block-size: 0.5rem;
+  margin-block: 1.75rem 0.25rem;
+}
+
+.sesiones__tramo {
+  flex: 1 1 0;
+  border-radius: var(--radius-pill);
+}
+
+.sesiones__tramo--activa {
+  background-color: var(--color-success);
+}
+
+.sesiones__tramo--sin-senal {
+  background-color: var(--color-warning);
+}
+
+.sesiones__tramo--inactiva {
+  background-color: var(--color-text-subtle);
+}
+
+.sesiones__ahora {
+  position: absolute;
+  inset-block: -0.25rem;
+  inline-size: 2px;
+  background-color: var(--color-text);
+  transform: translateX(-1px);
+}
+
+.sesiones__ahora-texto {
+  position: absolute;
+  inset-block-end: calc(100% + 0.125rem);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sesiones__ahora-texto--centro {
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+}
+
+.sesiones__ahora-texto--inicio {
+  inset-inline-start: 0;
+}
+
+.sesiones__ahora-texto--fin {
+  inset-inline-end: 0;
+}
+
+.sesiones__hitos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.sesiones__hitos li {
+  display: flex;
+  flex-direction: column;
+}
+
+.sesiones__hito-etiqueta {
+  color: var(--color-text-subtle);
+  font-size: 0.75rem;
+}
+
+.sesiones__datos-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.sesiones__dato {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding-block: 0.5rem;
+  border-block-end: 1px solid var(--color-border);
+}
+
+.sesiones__dato dt {
+  color: var(--color-text-muted);
+}
+
+.sesiones__dato dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.sesiones__acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
 @media (max-width: 760px) {
   .portal__container {
     padding-inline: 1.25rem;

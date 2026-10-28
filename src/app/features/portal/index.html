@@ -171,6 +171,28 @@
                 </div>
               </form>
 
+              <div class="sesiones" id="sesiones">
+                <div id="sesionesLista">
+                  <h3 class="sesiones__titulo" id="tituloSesiones" tabindex="-1">Sesiones activas</h3>
+                  <p class="portal__section-intro">Estos son los dispositivos donde tu cuenta tiene una sesión abierta. Sin «Recordarme», una sesión se cierra tras 8 h sin uso o a las 24 h de haber entrado; con «Recordarme», a los 30 días.</p>
+                  <p class="sesiones__aviso" id="sesionesAviso" role="status" aria-live="polite" hidden></p>
+                  <div id="sesionesContenido">
+                    <p class="portal__field-note">Cargando tus sesiones…</p>
+                  </div>
+
+                  <div class="sesiones__estados">
+                    <h4 class="sesiones__subtitulo">Qué significa cada estado</h4>
+                    <ul class="sesiones__estados-lista">
+                      <li><span class="sesiones__insignia sesiones__insignia--activa">Activa ahora</span> se está usando en este momento.</li>
+                      <li><span class="sesiones__insignia sesiones__insignia--sin-senal">Sin señal</span> el equipo puede estar suspendido o sin internet. Si se vuelve a usar, pasa a activa.</li>
+                      <li><span class="sesiones__insignia sesiones__insignia--inactiva">Inactiva</span> lleva tiempo sin usarse y se cerrará en la fecha indicada.</li>
+                      <li><span class="sesiones__insignia sesiones__insignia--pestana-cerrada">Pestaña cerrada</span> se cerró la pestaña sin «Recordarme»; la sesión se cierra a los 5 min si no se vuelve a abrir.</li>
+                    </ul>
+                  </div>
+                </div>
+                <div id="sesionesDetalle" hidden></div>
+              </div>
+
               <div class="portal__account-actions">
                 <button type="button" class="button button--outline" id="botonCerrarSesion">Cerrar sesión</button>
               </div>
@@ -270,6 +292,8 @@
   <script src="/app/features/portal/portal.perfil.js"></script>
   <script src="/app/features/portal/portal.correo.js"></script>
   <script src="/app/features/portal/portal.reauth.js"></script>
+  <script src="/app/features/portal/sesiones.nucleo.js"></script>
+  <script src="/app/features/portal/portal.sesiones.js"></script>
   <script src="/app/features/portal/portal.js"></script>
 </body>
 

@@ -290,6 +290,31 @@ async function salirDeEstaSesion() {
 }
 
 /*
+  Cierra todas las sesiones propias menos esta: el botón «Cerrar las demás
+  sesiones» y el cambio de contraseña (L30). Por la base, para que queden en el
+  historial como «Cerrada por ti».
+
+  Si la RPC falla (sin red, o el front llegó antes que la migración) se usa el
+  cierre de Supabase (L33): las sesiones se cierran igual y la limpieza las
+  registra como «Terminó la sesión». Sin respaldo, el cambio de contraseña
+  diría «Cerramos tus otras sesiones» con las otras todavía abiertas.
+*/
+async function cerrarLasDemasSesiones() {
+  try {
+    const { data, error } = await supabaseClient.rpc("sesiones_cerrar_demas");
+    if (!error && typeof data === "number") return { ok: true, cerradas: data, respaldo: false };
+  } catch {
+    // Se intenta con el respaldo.
+  }
+
+  // signOut directo, no cerrarSesion(): esta sesión sigue abierta, así que ni
+  // se marca el cierre para el latido ni se olvida su «Recordarme».
+  const { error } = await supabaseClient.auth.signOut({ scope: "others" });
+  if (error) return { ok: false, codigo: error.code, mensaje: traducirErrorAuth(error) };
+  return { ok: true, cerradas: null, respaldo: true };
+}
+
+/*
   Borra la cuenta del usuario de la sesión actual. El id a borrar nunca viaja en
   el cuerpo: la edge function lo toma del JWT, así que esta llamada no puede
   apuntar a otra cuenta. Un solo mensaje de error porque no hay casos de negocio

@@ -92,6 +92,7 @@ function crearArnes({
   conSesion = true,
   respuestaLatido = () => ({ data: true, error: null }),
   respuestaSalir = () => ({ data: true, error: null }),
+  respuestaCerrarDemas = () => ({ data: 2, error: null }),
   errorSignOut = null,
   respuestaUbicacion = { ok: true, cuerpo: { ciudad: "León", region: "GUA", pais: "MX" } },
   enIframe = false,
@@ -148,6 +149,7 @@ function crearArnes({
       registro.orden.push(`rpc:${nombre}`);
       if (nombre === "sesion_latido") return respuestaLatido(parametros);
       if (nombre === "sesion_salir") return respuestaSalir();
+      if (nombre === "sesiones_cerrar_demas") return respuestaCerrarDemas();
       return { data: true, error: null };
     },
   };
@@ -672,6 +674,45 @@ test("salirDeEstaSesion reports the error when nothing was closed", async () => 
   const resultado = plano(await arnes.evaluar("salirDeEstaSesion()"));
   assert.equal(resultado.ok, false);
   assert.equal(arnes.sesion.getItem(LLAVE_SESION), "token-guardado");
+});
+
+/* ---------- «Cerrar las demás» por la base, con respaldo (L30, L33) ---------- */
+
+test("cerrarLasDemasSesiones closes through the database and keeps this session", async () => {
+  const arnes = crearArnes();
+  const resultado = plano(await arnes.evaluar("cerrarLasDemasSesiones()"));
+  assert.deepEqual(resultado, { ok: true, cerradas: 2, respaldo: false });
+  assert.deepEqual(arnes.registro.orden, ["rpc:sesiones_cerrar_demas"]);
+  assert.equal(arnes.registro.signOut.length, 0);
+});
+
+test("cerrarLasDemasSesiones falls back to Supabase scope others when the RPC fails (L33)", async () => {
+  for (const respuestaCerrarDemas of [
+    () => ({ data: null, error: { code: "PGRST202" } }),
+    () => { throw new Error("Failed to fetch"); },
+  ]) {
+    const arnes = crearArnes({ respuestaCerrarDemas, recordar: true });
+    const resultado = plano(await arnes.evaluar("cerrarLasDemasSesiones()"));
+    assert.deepEqual(resultado, { ok: true, cerradas: null, respaldo: true });
+    assert.deepEqual(arnes.registro.signOut, [{ scope: "others" }]);
+    assert.equal(arnes.local.getItem(LLAVE_SESION), "token-guardado", "esta sesión sigue abierta");
+    assert.equal(arnes.local.getItem("taudux_recordarme"), "1", "esta sesión conserva «Recordarme»");
+  }
+});
+
+test("after the fallback, a heartbeat answering false still sends this tab to the login", async () => {
+  const arnes = crearArnes({ respuestaCerrarDemas: () => ({ data: null, error: { code: "PGRST202" } }) });
+  await arnes.evaluar("cerrarLasDemasSesiones()");
+  assert.equal(await arnes.evaluar("cierreDeSesionSolicitado"), false);
+});
+
+test("cerrarLasDemasSesiones reports failure when the fallback fails too", async () => {
+  const arnes = crearArnes({
+    respuestaCerrarDemas: () => ({ data: null, error: { code: "PGRST202" } }),
+    errorSignOut: { code: "unexpected_failure", status: 500 },
+  });
+  const resultado = plano(await arnes.evaluar("cerrarLasDemasSesiones()"));
+  assert.equal(resultado.ok, false);
 });
 
 test("cerrarSesion() keeps its global default (password reset still closes every session)", async () => {
