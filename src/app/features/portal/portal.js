@@ -302,7 +302,7 @@
     if (!boton) return;
 
     boton.addEventListener("click", async () => {
-      await cerrarSesion();
+      await salirDeEstaSesion();
       window.location.href = "/";
     });
   }

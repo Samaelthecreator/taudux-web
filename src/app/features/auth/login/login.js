@@ -41,6 +41,10 @@ const parametrosLogin = new URLSearchParams(window.location.search);
 const errorEnlaceLogin = parametrosErrorAuth();
 if (parametrosLogin.get("confirmed") === "1") {
   mostrarEstadoAuth("Correo confirmado. Ya puedes iniciar sesión.", "success", false);
+} else if (parametrosLogin.get("sesion") === "cerrada") {
+  // El latido (sesiones.service.js) manda acá cuando la sesión se cerró en
+  // otro lado; el `next` devuelve a la página donde estaba.
+  mostrarEstadoAuth("Tu sesión se cerró. Vuelve a iniciar sesión.", "info", false);
 } else if (parametrosLogin.get("password-reset") === "1") {
   mostrarEstadoAuth("Contraseña actualizada. Inicia sesión con tu nueva contraseña.", "success", false);
 } else if (parametrosLogin.get("reauth") === "cuenta-distinta") {

@@ -214,7 +214,15 @@ async function reautenticarConGoogle() {
   return { ok: true };
 }
 
+/*
+  Marca que esta página pidió cerrar la sesión. El latido (sesiones.service.js)
+  la consulta para no confundir ese cierre con una sesión que se cerró en otro
+  lado y mandar al login con aviso a quien acaba de salir a propósito.
+*/
+let cierreDeSesionSolicitado = false;
+
 async function cerrarSesion({ scope = "global" } = {}) {
+  cierreDeSesionSolicitado = true;
   const { error } = await supabaseClient.auth.signOut({ scope });
   if (error) {
     return { ok: false, codigo: error.code, mensaje: traducirErrorAuth(error) };
@@ -231,6 +239,48 @@ async function cerrarSesion({ scope = "global" } = {}) {
     Va DESPUÉS del `signOut` y sólo en el camino feliz: si el cierre falló, la
     sesión sigue viva y su preferencia todavía la describe.
   */
+  try {
+    localStorage.removeItem("taudux_recordarme");
+  } catch {
+    // Storage bloqueado: entonces nunca se guardó nada que borrar.
+  }
+  return { ok: true };
+}
+
+/*
+  «Cerrar sesión» del menú y del portal: cierra SOLO este dispositivo (L27).
+  Las demás sesiones se cierran desde «Sesiones activas». Restablecer la
+  contraseña sigue usando cerrarSesion() global, que las cierra todas.
+
+  Primero sesion_salir() (0056), que deja el motivo «cerraste sesión» en el
+  historial y borra la sesión de la base; después el signOut local. Si la RPC
+  falla (sin red, o el front llegó antes que la migración) se sale igual: la
+  limpieza la registrará como «sesión terminada».
+*/
+async function salirDeEstaSesion() {
+  // Antes de la RPC: un latido que llegue entre sesion_salir y el signOut
+  // recibiría `false` y mandaría al login a quien salió a propósito.
+  cierreDeSesionSolicitado = true;
+  let cerradaEnLaBase = false;
+  try {
+    const { data, error } = await supabaseClient.rpc("sesion_salir");
+    cerradaEnLaBase = !error && data === true;
+  } catch {
+    // Se sale igual con el signOut.
+  }
+
+  const resultado = await cerrarSesion({ scope: "local" });
+  if (resultado.ok || !cerradaEnLaBase) return resultado;
+
+  // La base ya cerró la sesión: lo que falló fue el signOut. El token guardado
+  // ya no sirve, así que se borra a mano en lugar de dejar a la persona dentro.
+  for (const almacen of [window.localStorage, window.sessionStorage]) {
+    try {
+      almacen.removeItem(LLAVE_SESION);
+    } catch {
+      // Storage bloqueado: no hay nada que borrar.
+    }
+  }
   try {
     localStorage.removeItem("taudux_recordarme");
   } catch {

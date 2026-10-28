@@ -77,6 +77,8 @@ test("scripts load in dependency order", () => {
     "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
     "/app/core/supabase/supabase-client.js",
     "/app/core/auth/auth.service.js",
+    // El latido de sesión (sesiones-activas): usa auth.service.js.
+    "/app/core/auth/sesiones.service.js",
     "/app/shared/navbar/navbar.js",
     "/app/shared/toast/toast.js",
     "/app/features/auth/auth-ui.js",

@@ -116,7 +116,7 @@ function filtrarEnlacesVisibles(enlaces, { esAdmin, haySesion }) {
 
 async function salirYVolver(evento) {
   if (evento) evento.preventDefault();
-  const resultado = await cerrarSesion();
+  const resultado = await salirDeEstaSesion();
   if (!resultado.ok) {
     if (typeof mostrarToast === "function") mostrarToast(resultado.mensaje, "error");
     return;
