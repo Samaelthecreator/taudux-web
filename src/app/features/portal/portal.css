@@ -61,7 +61,19 @@
   border-radius: 0;
 }
 
+/* Sin la barra del sitio, la cabecera se pega arriba del iframe. */
+.portal--embebido .portal__header {
+  top: 0;
+  border-radius: 0;
+}
+
+.portal--embebido .portal__sidebar {
+  top: calc(var(--portal-cabecera) + 1.5rem);
+}
+
 .portal__panel {
+  /* Alto de .portal__header: la ✕ de 44px, su padding y el borde. */
+  --portal-cabecera: calc(44px + 2rem + 1px);
   margin-block-start: 2rem;
   border: 1px solid var(--cfg-borde);
   border-radius: 20px;
@@ -75,12 +87,18 @@
 }
 
 .portal__header {
+  /* Fija al deslizar, con la ✕ siempre a mano; el contenido pasa por debajo. */
+  position: sticky;
+  top: var(--navbar-height);
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1rem 1rem 1.5rem;
   border-block-end: 1px solid var(--cfg-borde);
+  border-radius: 20px 20px 0 0;
+  background-color: var(--cfg-fondo);
 }
 
 .portal__title {
@@ -141,7 +159,7 @@
 
 .portal__sidebar {
   position: sticky;
-  top: calc(var(--navbar-height) + 1rem);
+  top: calc(var(--navbar-height) + var(--portal-cabecera) + 1.5rem);
 }
 
 .portal__nav {
@@ -1119,6 +1137,7 @@ a.portal__fila:hover {
 
   .portal__header {
     padding-inline-start: 1rem;
+    border-radius: 0;
   }
 
   .portal__layout {

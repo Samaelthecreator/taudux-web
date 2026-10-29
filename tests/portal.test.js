@@ -913,3 +913,28 @@ test("the phone number field takes its width from the card, not its own, so 390 
   assert.match(numero[1], /flex:\s*1/);
   assert.match(numero[1], /(?<!-)inline-size:\s*0/);
 });
+
+test("the «Configuración» header stays on top while the panel scrolls, in the page and in the overlay", () => {
+  /*
+    Dentro de la capa se desliza todo el documento del iframe: sin sticky, la
+    cabecera con la ✕ se iba hacia arriba con el contenido. En la página queda
+    bajo la barra del sitio; en la capa, pegada arriba. El menú lateral, que
+    también es sticky, se fija a la misma distancia a la que nace (el margen de
+    1.5rem de los hijos del panel): así no se desliza ni un poco antes de
+    pararse (L75).
+  */
+  const css = read("src/app/features/portal/portal.css");
+  const regla = (selector) => {
+    const escapado = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const encontrada = css.match(new RegExp(`(?:^|\\n)${escapado}\\s*\\{([^}]*)\\}`));
+    assert.ok(encontrada, `${selector} must be defined in portal.css`);
+    return encontrada[1];
+  };
+  const cabecera = regla(".portal__header");
+  assert.match(cabecera, /position:\s*sticky;/);
+  assert.match(cabecera, /top:\s*var\(--navbar-height\);/);
+  assert.match(cabecera, /background-color:\s*var\(--cfg-fondo\);/, "opaca: el contenido pasa por debajo");
+  assert.match(regla(".portal--embebido .portal__header"), /top:\s*0;/);
+  assert.match(regla(".portal__sidebar"), /top:\s*calc\(var\(--navbar-height\) \+ var\(--portal-cabecera\) \+ 1\.5rem\);/);
+  assert.match(regla(".portal--embebido .portal__sidebar"), /top:\s*calc\(var\(--portal-cabecera\) \+ 1\.5rem\);/);
+});
