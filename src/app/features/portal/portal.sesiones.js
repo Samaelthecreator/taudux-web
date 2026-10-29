@@ -78,11 +78,6 @@ function configurarSesionesActivas(session) {
     return svg;
   }
 
-  // El icono va en un cuadro, como en la maqueta (S18).
-  function icono(tipo) {
-    return el("span", { class: "sesiones__icono-caja", "aria-hidden": "true" }, svgDispositivo(tipo));
-  }
-
   // Una sesión sin latido todavía no tiene navegador guardado: se lee de su
   // user agent con el mismo intérprete que usa el latido (S13).
   function dispositivoDeFila(fila) {
@@ -150,8 +145,8 @@ function configurarSesionesActivas(session) {
   }
 
   // En un teléfono la tabla se desliza dentro de su caja: la página no
-  // scrollea de lado (L62).
-  function tablaSesiones(items, ahora) {
+  // scrollea de lado (L62). Abiertas y cerradas usan la misma (L66).
+  function tabla(columnas, filas, { conAccion = false } = {}) {
     return el(
       "div",
       { class: "sesiones__tabla-envoltorio" },
@@ -164,34 +159,42 @@ function configurarSesionesActivas(session) {
           el(
             "tr",
             {},
-            el("th", { scope: "col", texto: "Dispositivo" }),
-            el("th", { scope: "col", texto: "Ubicación" }),
-            el("th", { scope: "col", texto: "Creado" }),
-            el("th", { scope: "col", texto: "Actualizado" }),
-            el("th", { scope: "col", class: "sesiones__accion", "aria-label": "Acciones" })
+            ...columnas.map((texto) => el("th", { scope: "col", texto })),
+            conAccion ? el("th", { scope: "col", class: "sesiones__accion", "aria-label": "Acciones" }) : null
           )
         ),
-        el("tbody", {}, ...items.map((item) => filaAbierta(item, ahora)))
+        el("tbody", {}, ...filas)
       )
     );
   }
 
-  // Las cerradas sólo dicen dispositivo, ciudad, cuándo y motivo (L31).
-  function filaCerrada(item, ahora) {
+  function tablaSesiones(items, ahora) {
+    return tabla(
+      ["Dispositivo", "Ubicación", "Creado", "Actualizado"],
+      items.map((item) => filaAbierta(item, ahora)),
+      { conAccion: true }
+    );
+  }
+
+  // Las cerradas sólo dicen dispositivo, ciudad, cuándo y motivo (L31), sin
+  // control: tocarlas no hace nada.
+  function filaCerrada(item) {
     const { fila } = item;
-    const dispositivo = dispositivoDeFila(fila);
     return el(
-      "li",
-      { class: "sesiones__item sesiones__item--cerrada" },
-      icono(tipoDispositivo(dispositivo)),
+      "tr",
+      {},
       el(
-        "span",
-        { class: "sesiones__datos" },
-        el("span", { class: "sesiones__nombre", texto: nombreDispositivo(dispositivo) }),
-        el("span", { class: "sesiones__meta", texto: textoUbicacion(fila) }),
-        el("span", { class: "sesiones__meta", texto: `Se cerró ${fechaRelativa(fila.cerrada_en, ahora)}` }),
-        el("span", { class: "sesiones__motivo", texto: fraseMotivo(fila.motivo_cierre) })
-      )
+        "td",
+        {},
+        el(
+          "div",
+          { class: "sesiones__dispositivo" },
+          el("span", { class: "sesiones__nombre", texto: nombreDispositivo(dispositivoDeFila(fila)) })
+        )
+      ),
+      el("td", { texto: textoUbicacion(fila) }),
+      el("td", { class: "sesiones__fecha", texto: fechaCompleta(fila.cerrada_en) }),
+      el("td", { texto: fraseMotivo(fila.motivo_cierre) })
     );
   }
 
@@ -326,7 +329,7 @@ function configurarSesionesActivas(session) {
             foco: "cerradas",
             alCambiar: (abierto) => (estado.cerradasAbiertas = abierto),
           },
-          el("ul", { class: "sesiones__lista" }, ...visibles.map((item) => filaCerrada(item, ahora))),
+          tabla(["Dispositivo", "Ubicación", "Cerrada", "Motivo"], visibles.map((item) => filaCerrada(item))),
           grupos.cerradas.length > visibles.length
             ? el("button", {
                 type: "button",

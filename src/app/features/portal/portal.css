@@ -904,49 +904,9 @@ a.portal__fila:hover {
   text-transform: uppercase;
 }
 
-.sesiones__lista {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--cfg-borde);
-  border-radius: 16px;
-  background-color: var(--cfg-tarjeta);
-  list-style: none;
-  overflow: hidden;
-}
-
-.sesiones__item + .sesiones__item {
-  border-block-start: 1px solid var(--cfg-borde);
-}
-
-.sesiones__item--cerrada {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  inline-size: 100%;
-  padding: 16px 20px;
-  border: 0;
-  background: none;
-  color: var(--cfg-texto);
-  font: inherit;
-  text-align: start;
-}
-
 .sesiones__plegable-resumen:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
-}
-
-.sesiones__icono-caja {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  inline-size: 40px;
-  block-size: 40px;
-  border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.06);
-  color: var(--cfg-texto-2);
 }
 
 .sesiones__icono {
@@ -954,40 +914,12 @@ a.portal__fila:hover {
   block-size: 20px;
 }
 
-/*
-  min-inline-size: 0 deja que un nombre largo se parta en vez de empujar la
-  fila. break-word y no anywhere: anywhere baja el ancho mínimo a una letra y
-  el texto se parte dentro de las palabras aunque haya espacio (L36).
-*/
-.sesiones__datos {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-inline-size: 0;
-  overflow-wrap: break-word;
-}
-
-.sesiones__datos > * {
-  max-inline-size: 100%;
-}
-
 .sesiones__nombre {
   font-weight: 700;
 }
 
-.sesiones__datos > .sesiones__insignia {
-  margin-block: 2px;
-}
-
 .sesiones__meta {
   color: var(--cfg-texto-2);
-  font-size: 13.5px;
-}
-
-.sesiones__motivo {
-  color: var(--cfg-texto);
   font-size: 13.5px;
 }
 
@@ -1231,14 +1163,12 @@ a.portal__fila:hover {
     max-inline-size: none;
   }
 
-  .portal__fila,
-  .sesiones__item--cerrada {
+  .portal__fila {
     gap: 12px;
     padding: 14px 16px;
   }
 
-  .portal__fila-icono,
-  .sesiones__icono-caja {
+  .portal__fila-icono {
     inline-size: 36px;
     block-size: 36px;
   }

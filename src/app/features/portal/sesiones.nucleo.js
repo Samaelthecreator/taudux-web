@@ -155,9 +155,10 @@ function equipoDe({ sistema, modelo } = {}) {
   return sistema === "iOS" && /^(iPhone|iPad|iPod)$/.test(modelo || "") ? modelo : sistema;
 }
 
+// «Edge (Windows)», como el adjunto de L62 (L66).
 function nombreDispositivo({ navegador, sistema, modelo } = {}) {
   const equipo = equipoDe({ sistema, modelo });
-  if (navegador && equipo) return `${navegador} en ${equipo}`;
+  if (navegador && equipo) return `${navegador} (${equipo})`;
   return navegador || equipo || "Dispositivo desconocido";
 }
 

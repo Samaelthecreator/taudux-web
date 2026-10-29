@@ -249,10 +249,10 @@ test("a malformed country code falls back to the code itself instead of throwing
 
 /* ---------- Dispositivo (S1, S13) ---------- */
 
-test("device names read «Browser en System»; iOS uses the model", () => {
-  assert.equal(nombreDispositivo({ navegador: "Safari", sistema: "iOS", modelo: "iPhone" }), "Safari en iPhone");
-  assert.equal(nombreDispositivo({ navegador: "Edge", sistema: "Android", modelo: "SM-S918B" }), "Edge en Android");
-  assert.equal(nombreDispositivo({ navegador: "Chrome", sistema: "Windows" }), "Chrome en Windows");
+test("device names read «Browser (System)» like the attachment; iOS uses the model (L66)", () => {
+  assert.equal(nombreDispositivo({ navegador: "Safari", sistema: "iOS", modelo: "iPhone" }), "Safari (iPhone)");
+  assert.equal(nombreDispositivo({ navegador: "Edge", sistema: "Android", modelo: "SM-S918B" }), "Edge (Android)");
+  assert.equal(nombreDispositivo({ navegador: "Chrome", sistema: "Windows" }), "Chrome (Windows)");
   assert.equal(nombreDispositivo({ navegador: null, sistema: "Linux" }), "Linux");
   assert.equal(nombreDispositivo({ navegador: "Firefox", sistema: null }), "Firefox");
   assert.equal(nombreDispositivo({}), "Dispositivo desconocido");
@@ -481,13 +481,11 @@ test("the legend explains «Se está cerrando»", () => {
   assert.match(read("src/app/features/portal/portal.css"), /\.sesiones__insignia--cerrandose\s*\{/);
 });
 
-test("the list takes the modal look: rows in one card with separators and the icon in a square (S18)", () => {
+test("the tables take the modal look: one card with separators between rows (S18)", () => {
   const css = read("src/app/features/portal/portal.css");
   const bloque = css.slice(css.indexOf(".sesiones {"));
-  assert.match(bloque, /\.sesiones__lista\s*\{[^}]*background-color: var\(--cfg-tarjeta\);/);
-  assert.match(bloque, /\.sesiones__item \+ \.sesiones__item\s*\{\s*border-block-start: 1px solid var\(--cfg-borde\);/);
-  assert.match(bloque, /\.sesiones__icono-caja\s*\{/);
-  assert.match(CONTROLADOR, /sesiones__icono-caja/);
+  assert.match(bloque, /\.sesiones__tabla-envoltorio\s*\{[^}]*background-color: var\(--cfg-tarjeta\);/);
+  assert.match(bloque, /\.sesiones__tabla tbody tr \+ tr td\s*\{\s*border-block-start: 1px solid var\(--cfg-borde\);/);
 });
 
 /* ---------- L61: tocar una sesión no hace nada; se cierra desde su fila ---------- */
@@ -502,14 +500,38 @@ test("full dates look like the attachment: «18 oct 2026, 6:04 a.m.» (L62)", ()
 
 test("open sessions are a table: Dispositivo, Ubicación, Creado, Actualizado and «⋯» (L62)", () => {
   const tabla = CONTROLADOR.match(/function tablaSesiones[\s\S]*?\n  }\n/)[0];
-  for (const columna of ["Dispositivo", "Ubicación", "Creado", "Actualizado"]) {
-    assert.match(tabla, new RegExp(`el\\("th", \\{[^}]*texto: "${columna}"`), columna);
-  }
-  assert.match(tabla, /class: "sesiones__tabla-envoltorio"/);
+  assert.match(tabla, /tabla\(\s*\["Dispositivo", "Ubicación", "Creado", "Actualizado"\],[\s\S]*\{ conAccion: true \}/);
+  const envoltorio = CONTROLADOR.match(/function tabla\([\s\S]*?\n  }\n/)[0];
+  assert.match(envoltorio, /class: "sesiones__tabla-envoltorio"/);
+  assert.match(envoltorio, /conAccion \? el\("th", \{ scope: "col", class: "sesiones__accion", "aria-label": "Acciones" \}\)/);
   assert.match(FILA_ABIERTA, /fechaCompleta\(vida\.iniciadaEn\)/, "Creado");
   assert.match(FILA_ABIERTA, /fechaCompleta\(vida\.ultimoUso\)/, "Actualizado");
   assert.match(FILA_ABIERTA, /textoCierre\(vida, ahora\)/, "«Se cerrará …» bajo Actualizado");
   assert.doesNotMatch(FILA_ABIERTA, /Recordarme/, "«Recordarme» sale de la fila");
+});
+
+/* ---------- L66: las cerradas también son una tabla ---------- */
+
+test("closed sessions are a table like the open ones: Dispositivo, Ubicación, Cerrada, Motivo, without «⋯» (L66)", () => {
+  const seccion = CONTROLADOR.slice(CONTROLADOR.indexOf("Cerradas en los últimos 7 días"));
+  const llamada = seccion.match(/tabla\(\s*\[([^\]]*)\]/);
+  assert.ok(llamada, "las cerradas se dibujan con tabla([...])");
+  assert.deepEqual(
+    [...llamada[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]),
+    ["Dispositivo", "Ubicación", "Cerrada", "Motivo"],
+  );
+  assert.match(seccion.slice(0, 400), /visibles\.map\(\(item\) => filaCerrada\(item\)\)/);
+  assert.doesNotMatch(CONTROLADOR, /sesiones__lista|sesiones__item/);
+});
+
+test("a closed row is a table row with its date and reason, and tapping it does nothing (L31, L66)", () => {
+  const filaCerrada = CONTROLADOR.match(/function filaCerrada[\s\S]*?\n  }\n/)[0];
+  assert.match(filaCerrada, /el\(\s*"tr"/);
+  assert.match(filaCerrada, /nombreDispositivo\(dispositivoDeFila\(fila\)\)/);
+  assert.match(filaCerrada, /textoUbicacion\(fila\)/);
+  assert.match(filaCerrada, /fechaCompleta\(fila\.cerrada_en\)/);
+  assert.match(filaCerrada, /fraseMotivo\(fila\.motivo_cierre\)/);
+  assert.doesNotMatch(filaCerrada, /onclick|button/);
 });
 
 test("on a phone the table slides inside its own box; the page never scrolls sideways (L62)", () => {
