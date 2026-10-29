@@ -1,14 +1,16 @@
 /*
   «Sesiones activas» en «Acceso y seguridad» (T5 de sesiones-activas): la lista
-  y el detalle de cada sesión. Los estados, plazos y textos salen de
-  sesiones.nucleo.js; acá sólo se pide la lista, se dibuja y se cierra.
+  de sesiones, en una tabla (L62). Tocar una fila no hace nada (L61): cada
+  sesión de otro dispositivo se cierra con su «⋯», que pide confirmación. Los
+  estados, plazos y textos salen de sesiones.nucleo.js; acá sólo se pide la
+  lista, se dibuja y se cierra.
 
   Todo se escribe con textContent: la ciudad viene de Vercel y el navegador del
   user agent de otro dispositivo, así que nada de eso se trata como HTML.
 
-  La lista se pide al abrir el portal, tras cada cierre y cada ~60 s con la
-  pestaña visible y la sección a la vista (L30). Si la sesión que se está viendo
-  en detalle deja de estar abierta, se vuelve a la lista con un aviso (L32).
+  La misma lista llena el resumen «Dispositivos con acceso a tu cuenta» de
+  «Acceso y seguridad» (T9, S15). Se pide al abrir el portal, tras cada cierre
+  y cada ~60 s con la pestaña visible y el resumen o la lista a la vista (L30).
 
   Depende de sesiones.nucleo.js, sesiones.service.js (dispositivoDesde),
   auth.service.js, auth-identidades.js, auth-ui.js, toast.js y confirm-dialog.js.
@@ -19,21 +21,20 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 function configurarSesionesActivas(session) {
   const raiz = document.getElementById("sesiones");
-  const vistaLista = document.getElementById("sesionesLista");
   const contenido = document.getElementById("sesionesContenido");
-  const aviso = document.getElementById("sesionesAviso");
-  const vistaDetalle = document.getElementById("sesionesDetalle");
   const titulo = document.getElementById("tituloSesiones");
-  if (!raiz || !vistaLista || !contenido || !aviso || !vistaDetalle) return;
+  if (!raiz || !contenido) return;
 
   const seccion = raiz.closest(".portal__section");
+  const resumen = document.getElementById("dispositivosResumen");
+  const totalResumen = document.getElementById("dispositivosTotal");
+  const seccionResumen = resumen ? resumen.closest(".portal__section") : null;
   const tieneContrasena = puedeUsarContrasena(session.user);
   const estado = {
     filas: null,
     fallo: false,
     cargando: false,
     recargar: false,
-    detalleId: null,
     cerradasVisibles: CERRADAS_POR_PAGINA,
     inactivasAbiertas: false,
     cerradasAbiertas: false,
@@ -52,24 +53,34 @@ function configurarSesionesActivas(session) {
     return nodo;
   }
 
-  function icono(tipo) {
+  // `tipo`: el de tipoDispositivo («movil») o el de claseDispositivo.
+  function svgDispositivo(tipo) {
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.setAttribute("fill", "none");
     svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-width", "1.8");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("class", "sesiones__icono");
-    const formas =
-      tipo === "movil"
-        ? [["rect", { x: 7, y: 2, width: 10, height: 20, rx: 2 }], ["path", { d: "M11 18h2" }]]
-        : [["rect", { x: 2, y: 4, width: 20, height: 13, rx: 2 }], ["path", { d: "M8 21h8M12 17v4" }]];
+    let formas;
+    if (tipo === "movil" || tipo === "telefono") {
+      formas = [["rect", { x: 7, y: 2, width: 10, height: 20, rx: 2 }], ["path", { d: "M11 18h2" }]];
+    } else if (tipo === "tableta") {
+      formas = [["rect", { x: 4, y: 2, width: 16, height: 20, rx: 2 }], ["path", { d: "M11 18h2" }]];
+    } else {
+      formas = [["rect", { x: 2, y: 4, width: 20, height: 13, rx: 2 }], ["path", { d: "M8 21h8M12 17v4" }]];
+    }
     for (const [nombre, atributos] of formas) {
       const forma = document.createElementNS(SVG_NS, nombre);
       for (const [clave, valor] of Object.entries(atributos)) forma.setAttribute(clave, String(valor));
       svg.append(forma);
     }
     return svg;
+  }
+
+  // El icono va en un cuadro, como en la maqueta (S18).
+  function icono(tipo) {
+    return el("span", { class: "sesiones__icono-caja", "aria-hidden": "true" }, svgDispositivo(tipo));
   }
 
   // Una sesión sin latido todavía no tiene navegador guardado: se lee de su
@@ -91,39 +102,81 @@ function configurarSesionesActivas(session) {
     return el("div", { class: "sesiones__grupo" }, el("p", { class: "sesiones__grupo-titulo", texto: etiqueta }), ...hijos);
   }
 
+  /*
+    Una fila de la tabla (L62). Los hijos de <td> son block o inline, nunca
+    cambian el display de la celda (invariante de layout). La insignia de
+    estado va junto al nombre; «Se cerrará …», bajo «Actualizado».
+  */
   function filaAbierta(item, ahora) {
     const { fila, vida } = item;
-    const dispositivo = dispositivoDeFila(fila);
-    const lugar = `${textoUbicacion(fila)} · ${vida.recordarme ? "Recordarme" : "Sin recordarme"}`;
+    const nombre = nombreDispositivo(dispositivoDeFila(fila));
     return el(
-      "li",
-      { class: "sesiones__item" },
+      "tr",
+      {},
       el(
-        "button",
-        {
-          type: "button",
-          class: "sesiones__fila",
-          "data-foco": `fila-${fila.id}`,
-          onclick: () => abrirDetalle(fila.id),
-        },
-        icono(tipoDispositivo(dispositivo)),
+        "td",
+        {},
         el(
-          "span",
-          { class: "sesiones__datos" },
-          el("span", { class: "sesiones__nombre", texto: nombreDispositivo(dispositivo) }),
-          el("span", { class: "sesiones__meta", texto: lugar }),
-          fila.es_actual
-            ? el("span", { class: "sesiones__meta", texto: "Tu sesión actual" })
-            : el("span", { class: "sesiones__meta", texto: `Último uso: ${haceCuanto(vida.ultimoUso, ahora)}` }),
-          fila.es_actual ? null : el("span", { class: "sesiones__meta", texto: textoCierre(vida, ahora) })
-        ),
-        fila.es_actual ? null : insignia(vida.estado),
-        el("span", { class: "sesiones__flecha", "aria-hidden": "true", texto: "›" })
+          "div",
+          { class: "sesiones__dispositivo" },
+          el("span", { class: "sesiones__nombre", texto: nombre }),
+          fila.es_actual ? el("span", { class: "sesiones__insignia sesiones__insignia--actual", texto: "Actual" }) : insignia(vida.estado)
+        )
+      ),
+      el("td", { texto: textoUbicacion(fila) }),
+      el("td", { class: "sesiones__fecha", texto: fechaCompleta(vida.iniciadaEn) }),
+      el(
+        "td",
+        { class: "sesiones__fecha" },
+        el("div", { texto: fechaCompleta(vida.ultimoUso) }),
+        fila.es_actual ? null : el("div", { class: "sesiones__meta", texto: textoCierre(vida, ahora) })
+      ),
+      el(
+        "td",
+        { class: "sesiones__accion" },
+        // La actual se cierra con «Cerrar sesión» de «Acceso y seguridad».
+        fila.es_actual
+          ? null
+          : el("button", {
+              type: "button",
+              class: "sesiones__mas-opciones",
+              "aria-label": `Cerrar la sesión de ${nombre}`,
+              "data-foco": `cerrar-${fila.id}`,
+              onclick: (evento) => cerrarUna(fila.id, evento.currentTarget),
+              texto: "⋯",
+            })
       )
     );
   }
 
-  // Las cerradas no abren detalle (L31): dispositivo, ciudad, cuándo y motivo.
+  // En un teléfono la tabla se desliza dentro de su caja: la página no
+  // scrollea de lado (L62).
+  function tablaSesiones(items, ahora) {
+    return el(
+      "div",
+      { class: "sesiones__tabla-envoltorio" },
+      el(
+        "table",
+        { class: "sesiones__tabla" },
+        el(
+          "thead",
+          {},
+          el(
+            "tr",
+            {},
+            el("th", { scope: "col", texto: "Dispositivo" }),
+            el("th", { scope: "col", texto: "Ubicación" }),
+            el("th", { scope: "col", texto: "Creado" }),
+            el("th", { scope: "col", texto: "Actualizado" }),
+            el("th", { scope: "col", class: "sesiones__accion", "aria-label": "Acciones" })
+          )
+        ),
+        el("tbody", {}, ...items.map((item) => filaAbierta(item, ahora)))
+      )
+    );
+  }
+
+  // Las cerradas sólo dicen dispositivo, ciudad, cuándo y motivo (L31).
   function filaCerrada(item, ahora) {
     const { fila } = item;
     const dispositivo = dispositivoDeFila(fila);
@@ -164,6 +217,52 @@ function configurarSesionesActivas(session) {
     if (destino) destino.focus();
   }
 
+  /*
+    «Dispositivos con acceso a tu cuenta» (S15, L59): una fila por tipo, antes
+    de «Administrar todos los dispositivos», que ya está en el HTML. Las filas
+    del resumen llevan data-resumen para reemplazarlas en cada carga.
+  */
+  function dibujarResumen() {
+    if (!resumen) return;
+    let filas;
+    let total = null;
+    if (estado.filas === null) {
+      if (!estado.fallo) return;
+      filas = [
+        el("p", {
+          class: "portal__fila portal__fila--fija portal__fila-desc",
+          "data-resumen": true,
+          texto: "No pudimos cargar tus dispositivos.",
+        }),
+      ];
+    } else {
+      const ahora = Date.now();
+      const datos = resumirPorTipo(estado.filas, ahora, dispositivoDeFila);
+      total = datos.total;
+      filas = datos.grupos.map((grupo) =>
+        el(
+          "a",
+          { class: "portal__fila", href: "#sesiones", "data-resumen": true, "data-foco": `resumen-${grupo.clase}` },
+          el("span", { class: "portal__fila-icono", "aria-hidden": "true" }, svgDispositivo(grupo.clase)),
+          el(
+            "span",
+            { class: "portal__fila-datos" },
+            el("span", { class: "portal__fila-titulo", texto: grupo.titulo }),
+            grupo.detalle ? el("span", { class: "portal__fila-desc", texto: grupo.detalle }) : null
+          ),
+          el("span", { class: "portal__fila-flecha", "aria-hidden": "true", texto: "›" })
+        )
+      );
+    }
+    resumen.querySelectorAll("[data-resumen]").forEach((nodo) => nodo.remove());
+    const administrar = resumen.querySelector('a[href="#sesiones"]:not([data-resumen])');
+    for (const nodo of filas) resumen.insertBefore(nodo, administrar);
+    if (totalResumen) {
+      totalResumen.hidden = total === null;
+      totalResumen.textContent = total === null ? "" : String(total);
+    }
+  }
+
   function dibujarLista() {
     if (estado.fallo) {
       contenido.replaceChildren(
@@ -179,17 +278,14 @@ function configurarSesionesActivas(session) {
     const demas = grupos.otras.length + grupos.inactivas.length;
     const nodos = [];
 
-    if (grupos.actual) {
-      nodos.push(grupo("Este dispositivo", el("ul", { class: "sesiones__lista" }, filaAbierta(grupos.actual, ahora))));
-    }
-
+    // Una sola tabla con la actual primero, marcada «Actual» (L62).
+    const visibles = [grupos.actual, ...grupos.otras].filter(Boolean);
+    const abiertas = visibles.length + grupos.inactivas.length;
     nodos.push(
       grupo(
-        `Otras sesiones · ${demas}`,
+        `Sesiones abiertas · ${abiertas}`,
+        visibles.length > 0 ? tablaSesiones(visibles, ahora) : null,
         demas === 0 ? el("p", { class: "portal__field-note", texto: "No tienes otras sesiones abiertas." }) : null,
-        grupos.otras.length > 0
-          ? el("ul", { class: "sesiones__lista" }, ...grupos.otras.map((item) => filaAbierta(item, ahora)))
-          : null,
         grupos.inactivas.length > 0
           ? plegable(
               {
@@ -198,7 +294,7 @@ function configurarSesionesActivas(session) {
                 foco: "inactivas",
                 alCambiar: (abierto) => (estado.inactivasAbiertas = abierto),
               },
-              el("ul", { class: "sesiones__lista" }, ...grupos.inactivas.map((item) => filaAbierta(item, ahora)))
+              tablaSesiones(grupos.inactivas, ahora)
             )
           : null
       )
@@ -250,154 +346,9 @@ function configurarSesionesActivas(session) {
     contenido.replaceChildren(...nodos);
   }
 
-  function filaDato(etiqueta, valor) {
-    return el("div", { class: "sesiones__dato" }, el("dt", { texto: etiqueta }), el("dd", { texto: valor }));
-  }
-
-  function barraVida(vida, ahora) {
-    const { tramos, posicionAhora } = tramosVida(vida, ahora);
-    const hitos = [["Último uso", vida.ultimoUso]];
-    if (vida.inactivaDesde) hitos.push(["Inactiva desde", vida.inactivaDesde]);
-    hitos.push(["Se cerrará", vida.seCerrara]);
-    const resumen = hitos.map(([etiqueta, fecha]) => `${etiqueta}: ${fechaRelativa(fecha, ahora)}`).join(". ");
-
-    // Cerca de un borde la etiqueta se ancla hacia adentro: centrada, se
-    // saldría de la barra y haría scrollear la página a 375 px.
-    const anclaje = posicionAhora < 0.15 ? "inicio" : posicionAhora > 0.85 ? "fin" : "centro";
-    const marca = el(
-      "span",
-      { class: "sesiones__ahora" },
-      el("span", { class: `sesiones__ahora-texto sesiones__ahora-texto--${anclaje}`, texto: "Ahora" })
-    );
-    marca.style.insetInlineStart = `${(posicionAhora * 100).toFixed(1)}%`;
-
-    return el(
-      "div",
-      { class: "sesiones__vida" },
-      el(
-        "div",
-        { class: "sesiones__barra", role: "img", "aria-label": `Vida de esta sesión. Ahora. ${resumen}.` },
-        ...tramos.map((tramo) => el("span", { class: `sesiones__tramo sesiones__tramo--${tramo.clave}`, title: tramo.etiqueta })),
-        marca
-      ),
-      el(
-        "ol",
-        { class: "sesiones__hitos", "aria-hidden": "true" },
-        ...hitos.map(([etiqueta, fecha]) =>
-          el("li", {}, el("span", { class: "sesiones__hito-etiqueta", texto: etiqueta }), el("span", { texto: fechaRelativa(fecha, ahora) }))
-        )
-      )
-    );
-  }
-
-  // El cambio a la subvista #contrasena lo hace la navegación interna de
-  // portal.js (sin entrada nueva en el historial, L45); acá sólo se deja la
-  // lista como estaba para cuando se vuelva.
-  function irAContrasena() {
-    volverALista();
-  }
-
-  function dibujarDetalle() {
-    const ahora = Date.now();
-    const grupos = agruparSesiones(estado.filas || [], ahora);
-    const abiertas = [grupos.actual, ...grupos.otras, ...grupos.inactivas].filter(Boolean);
-    const item = abiertas.find((sesion) => sesion.fila.id === estado.detalleId);
-    if (!item) {
-      volverALista("Esa sesión ya se cerró");
-      return;
-    }
-
-    const { fila, vida } = item;
-    const dispositivo = dispositivoDeFila(fila);
-    let acciones;
-    if (fila.es_actual) {
-      acciones = el("p", { class: "portal__field-note", texto: "Para salir de este dispositivo usa «Cerrar sesión»." });
-    } else {
-      const ayuda = textoNoReconoces(tieneContrasena);
-      acciones = el(
-        "div",
-        { class: "sesiones__acciones" },
-        el("button", {
-          type: "button",
-          class: "button button--outline portal__danger-button",
-          "data-foco": "cerrar-esta",
-          onclick: (evento) => cerrarUna(fila.id, evento.currentTarget),
-          texto: "Cerrar esta sesión",
-        }),
-        el(
-          "p",
-          { class: "portal__field-note" },
-          ayuda.texto,
-          ayuda.enlace ? el("a", { href: "#contrasena", onclick: irAContrasena, texto: ayuda.enlace }) : null,
-          ayuda.final
-        )
-      );
-    }
-
-    vistaDetalle.replaceChildren(
-      el("button", {
-        type: "button",
-        class: "sesiones__volver",
-        "data-foco": "volver",
-        onclick: () => volverALista(),
-        texto: "← Sesiones activas",
-      }),
-      el("h3", { class: "sesiones__titulo", id: "tituloDetalleSesion", tabindex: "-1", texto: "Detalle de sesión" }),
-      el(
-        "div",
-        { class: "sesiones__cabecera" },
-        icono(tipoDispositivo(dispositivo)),
-        el("p", { class: "sesiones__nombre", texto: nombreDispositivo(dispositivo) }),
-        fila.es_actual ? el("span", { class: "sesiones__insignia", texto: "Tu sesión actual" }) : insignia(vida.estado)
-      ),
-      el("h4", { class: "sesiones__subtitulo", texto: "Vida de esta sesión" }),
-      barraVida(vida, ahora),
-      el("p", {
-        class: "portal__field-note",
-        texto: "Si este dispositivo se vuelve a usar antes, pasa a activa y la cuenta empieza de nuevo.",
-      }),
-      el(
-        "dl",
-        { class: "sesiones__datos-detalle" },
-        filaDato("Último uso", fila.es_actual ? "Ahora" : haceCuanto(vida.ultimoUso, ahora)),
-        filaDato("Inicio de sesión", fechaCompleta(vida.iniciadaEn)),
-        filaDato("Ubicación aproximada", textoUbicacion(fila)),
-        filaDato("Recordarme", textoRecordarme(vida.recordarme)),
-        filaDato("Navegador", detalleNavegador(dispositivo))
-      ),
-      acciones
-    );
-  }
-
-  function abrirDetalle(id) {
-    estado.detalleId = id;
-    aviso.hidden = true;
-    aviso.textContent = "";
-    vistaLista.hidden = true;
-    vistaDetalle.hidden = false;
-    dibujarDetalle();
-    const encabezado = document.getElementById("tituloDetalleSesion");
-    if (encabezado) encabezado.focus();
-  }
-
-  function volverALista(mensaje) {
-    const anterior = estado.detalleId;
-    estado.detalleId = null;
-    vistaDetalle.hidden = true;
-    vistaDetalle.replaceChildren();
-    vistaLista.hidden = false;
-    dibujarLista();
-    aviso.textContent = mensaje || "";
-    aviso.hidden = !mensaje;
-
-    const fila = !mensaje && anterior ? contenido.querySelector(`[data-foco="${CSS.escape(`fila-${anterior}`)}"]`) : null;
-    if (fila) fila.focus();
-    else if (titulo) titulo.focus();
-  }
-
   function dibujar() {
-    if (estado.detalleId) conFocoConservado(vistaDetalle, dibujarDetalle);
-    else conFocoConservado(contenido, dibujarLista);
+    if (resumen) conFocoConservado(resumen, dibujarResumen);
+    conFocoConservado(contenido, dibujarLista);
   }
 
   /*
@@ -429,8 +380,15 @@ function configurarSesionesActivas(session) {
     dibujar();
   }
 
-  // «Cerrar esta sesión» no pide confirmación (L30).
+  // «⋯» pide confirmación antes de cerrar (L62; antes no la pedía, L30).
   async function cerrarUna(id, boton) {
+    const confirmado = await confirmarConTexto({
+      titulo: "¿Cerrar esta sesión?",
+      mensaje: "Ese dispositivo perderá acceso a tu cuenta.",
+      etiquetaConfirmar: "Cerrar sesión",
+    });
+    if (!confirmado) return;
+
     establecerBotonOcupado(boton, true);
     let cerrada = false;
     try {
@@ -441,14 +399,11 @@ function configurarSesionesActivas(session) {
     }
     establecerBotonOcupado(boton, false);
 
-    if (cerrada) {
-      estado.detalleId = null;
-      volverALista();
-      mostrarToast("Cerramos esa sesión.", "success");
-    } else {
-      mostrarToast("No pudimos cerrar esa sesión. Intenta de nuevo.", "error");
-    }
+    if (cerrada) mostrarToast("Cerramos esa sesión.", "success");
+    else mostrarToast("No pudimos cerrar esa sesión. Intenta de nuevo.", "error");
     await cargar();
+    // La fila cerrada desaparece con su botón: el foco vuelve al título.
+    if (cerrada && titulo) titulo.focus();
   }
 
   async function cerrarDemas(boton, cantidad) {
@@ -468,8 +423,14 @@ function configurarSesionesActivas(session) {
   }
 
   function seVe() {
-    return document.visibilityState === "visible" && !(seccion && seccion.hidden);
+    const visible = document.visibilityState === "visible";
+    const conLista = !(seccion && seccion.hidden);
+    const conResumen = Boolean(seccionResumen) && !seccionResumen.hidden;
+    return visible && (conLista || conResumen);
   }
+
+  const nota = document.getElementById("notaNoReconoces");
+  if (nota) nota.textContent = textoNoReconocesResumen(tieneContrasena);
 
   setInterval(() => {
     if (seVe()) cargar();

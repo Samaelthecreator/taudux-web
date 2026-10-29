@@ -242,7 +242,22 @@
   text-decoration: underline;
 }
 
-/* Filas que abren una subvista: una tarjeta con separadores. */
+/*
+  Resumen de «Acceso y seguridad» (T9, S15): grupos con título y, debajo, una
+  tarjeta de filas con separadores. Una fila es un enlace a una subvista o,
+  con --fija, sólo información (el correo, el aviso de Google).
+*/
+.portal__grupo-titulo {
+  /* La sección separa sus hijos con 1.5rem: el título va pegado a su tarjeta. */
+  margin: 0.5rem 0 -0.75rem;
+  color: var(--cfg-texto-2);
+  font-family: "Orbitron", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .portal__filas {
   display: grid;
   border: 1px solid var(--cfg-borde);
@@ -254,19 +269,24 @@
 .portal__fila {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  gap: 14px;
+  margin: 0;
+  padding: 16px 20px;
   color: var(--cfg-texto);
   text-decoration: none;
   overflow-wrap: break-word;
+}
+
+/* display: flex le gana a la hoja del navegador para [hidden] (S16). */
+.portal__fila[hidden] {
+  display: none;
 }
 
 .portal__fila + .portal__fila {
   border-block-start: 1px solid var(--cfg-borde);
 }
 
-.portal__fila:hover {
+a.portal__fila:hover {
   background-color: var(--cfg-pie);
 }
 
@@ -275,9 +295,142 @@
   outline-offset: -2px;
 }
 
-.portal__fila span {
+.portal__fila-icono {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--cfg-texto-2);
+}
+
+.portal__fila-icono svg {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+.portal__fila-icono--google {
+  color: #ea4335;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* flex-basis 0 + min-inline-size 0: el ancho propio del input del correo no
+   ensancha la fila (la lección del teléfono en T8, L57). */
+.portal__fila-datos {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.portal__fila-titulo {
+  color: var(--cfg-texto);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* El correo: un input de sólo lectura que se ve como texto. */
+.portal__fila-valor {
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cfg-texto);
+  font: inherit;
+  font-size: 15px;
+  text-overflow: ellipsis;
+}
+
+.portal__fila-valor:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.portal__fila-desc {
+  margin: 0;
+  color: var(--cfg-texto-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.portal__fila-desc a,
+.portal__nota a {
+  color: var(--cfg-acento);
+}
+
+.portal__fila-flecha {
+  flex: 0 0 auto;
   color: var(--cfg-texto-2);
   font-size: 1.3rem;
+}
+
+.portal__fila-cuenta {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  min-inline-size: 26px;
+  block-size: 26px;
+  padding-inline: 6px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--cfg-texto);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.portal__fila-cuenta[hidden] {
+  display: none;
+}
+
+/* El aviso de Google lleva botón y estado: cuando no caben, bajan. */
+#avisoSinContrasena {
+  flex-wrap: wrap;
+}
+
+#avisoSinContrasena .portal__fila-datos {
+  flex-basis: 12rem;
+}
+
+.portal__boton-fila {
+  flex: 0 0 auto;
+  min-block-size: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--cfg-borde);
+  border-radius: 10px;
+  background: none;
+  color: var(--cfg-texto);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.portal__boton-fila:hover {
+  background-color: var(--cfg-menu-activo);
+}
+
+.portal__boton-fila:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.portal__fila-estado {
+  flex-basis: 100%;
+}
+
+.portal__fila-estado:empty {
+  display: none;
+}
+
+.portal__nota {
+  margin: -0.75rem 0 0;
+  color: var(--cfg-texto-2);
+  font-size: 13.5px;
 }
 
 .portal__section-intro {
@@ -690,27 +843,30 @@
 
 /*
   «Sesiones activas» (T5 de sesiones-activas). Lista y detalle comparten el
-  bloque; el detalle reemplaza a la lista en el mismo lugar.
+  bloque; el detalle reemplaza a la lista en el mismo lugar. Desde T9 (S18)
+  toma el aspecto del panel: filas en una tarjeta con separadores, icono en
+  cuadro e insignia bajo el nombre.
 */
+/* min-inline-size: 0: es hijo de la grilla de la sección; sin esto crece al
+   ancho mínimo de la tabla y se sale del panel en vez de deslizarla (L62). */
 .sesiones {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-block-start: 1.5rem;
-  border-block-start: 1px solid var(--color-border);
-}
-
-.sesiones #sesionesLista,
-.sesiones #sesionesDetalle {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   min-inline-size: 0;
 }
 
-.sesiones #sesionesLista[hidden],
-.sesiones #sesionesDetalle[hidden] {
-  display: none;
+/* El portal no tiene color propio para enlaces: el azul del navegador no se
+   lee sobre el fondo oscuro (L36). */
+.sesiones a {
+  color: var(--cfg-acento);
+}
+
+.sesiones #sesionesLista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-inline-size: 0;
 }
 
 .sesiones__titulo:focus {
@@ -721,17 +877,6 @@
   font-size: 1rem;
 }
 
-.sesiones__aviso {
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--color-warning);
-  border-radius: var(--radius-field);
-  background-color: color-mix(in srgb, var(--color-warning) 12%, transparent);
-}
-
-.sesiones__aviso[hidden] {
-  display: none;
-}
-
 .sesiones__grupo {
   display: flex;
   flex-direction: column;
@@ -739,9 +884,10 @@
 }
 
 .sesiones__grupo-titulo {
-  color: var(--color-text-subtle);
-  font-size: 0.75rem;
-  font-weight: 700;
+  color: var(--cfg-texto-2);
+  font-family: "Orbitron", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -749,103 +895,231 @@
 .sesiones__lista {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
   margin: 0;
   padding: 0;
+  border: 1px solid var(--cfg-borde);
+  border-radius: 16px;
+  background-color: var(--cfg-tarjeta);
   list-style: none;
+  overflow: hidden;
 }
 
-.sesiones__fila,
+.sesiones__item + .sesiones__item {
+  border-block-start: 1px solid var(--cfg-borde);
+}
+
 .sesiones__item--cerrada {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 14px;
   inline-size: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-field);
-  background-color: var(--color-field);
-  color: var(--color-text);
+  padding: 16px 20px;
+  border: 0;
+  background: none;
+  color: var(--cfg-texto);
   font: inherit;
   text-align: start;
 }
 
-.sesiones__fila {
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-
-.sesiones__fila:hover {
-  border-color: var(--color-accent);
-}
-
-.sesiones__fila:focus-visible,
-.sesiones__volver:focus-visible,
 .sesiones__plegable-resumen:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
 
-.sesiones__icono {
+.sesiones__icono-caja {
+  display: grid;
   flex: 0 0 auto;
-  inline-size: 1.5rem;
-  block-size: 1.5rem;
-  color: var(--color-text-muted);
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--cfg-texto-2);
 }
 
-/* min-inline-size: 0 deja que un nombre largo se parta en vez de empujar la fila. */
+.sesiones__icono {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+/*
+  min-inline-size: 0 deja que un nombre largo se parta en vez de empujar la
+  fila. break-word y no anywhere: anywhere baja el ancho mínimo a una letra y
+  el texto se parte dentro de las palabras aunque haya espacio (L36).
+*/
 .sesiones__datos {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 0.125rem;
+  align-items: flex-start;
+  gap: 2px;
   min-inline-size: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+.sesiones__datos > * {
+  max-inline-size: 100%;
 }
 
 .sesiones__nombre {
   font-weight: 700;
 }
 
+.sesiones__datos > .sesiones__insignia {
+  margin-block: 2px;
+}
+
 .sesiones__meta {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  color: var(--cfg-texto-2);
+  font-size: 13.5px;
 }
 
 .sesiones__motivo {
-  color: var(--color-text);
-  font-size: 0.875rem;
+  color: var(--cfg-texto);
+  font-size: 13.5px;
 }
 
-.sesiones__flecha {
-  flex: 0 0 auto;
-  color: var(--color-text-subtle);
-  font-size: 1.25rem;
+/*
+  Tabla de sesiones abiertas (L62). En un teléfono se desliza dentro de su
+  caja: la página nunca scrollea de lado. Un solo eje por columna: el th y sus
+  celdas comparten alineación.
+*/
+.sesiones__tabla-envoltorio {
+  max-inline-size: 100%;
+  border: 1px solid var(--cfg-borde);
+  border-radius: 16px;
+  background-color: var(--cfg-tarjeta);
+  overflow-x: auto;
+}
+
+.sesiones__tabla {
+  inline-size: 100%;
+  min-inline-size: 640px;
+  border-collapse: collapse;
+  color: var(--cfg-texto);
+  /* 13 px y 10 px a los lados: a ese tamaño la tabla cabe en los 672 px del
+     panel en computadora sin deslizarse (L62). */
+  font-size: 13px;
+}
+
+.sesiones__tabla th {
+  padding: 12px 10px;
+  border-block-end: 1px solid var(--cfg-borde);
+  color: var(--cfg-texto-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: start;
+}
+
+.sesiones__tabla td {
+  padding: 14px 10px;
+  vertical-align: middle;
+  text-align: start;
+}
+
+.sesiones__tabla tbody tr + tr td {
+  border-block-start: 1px solid var(--cfg-borde);
+}
+
+/* El nombre en una línea y la insignia debajo: junto al nombre partía
+   «Firefox en / Linux» en el ancho del panel. Hijos block, el td no cambia de
+   display. */
+.sesiones__dispositivo .sesiones__nombre {
+  display: block;
+  white-space: nowrap;
+}
+
+.sesiones__dispositivo .sesiones__insignia {
+  display: inline-block;
+  margin-block-start: 4px;
+}
+
+.sesiones__fecha {
+  white-space: nowrap;
+}
+
+.sesiones__fecha .sesiones__meta {
+  margin-block-start: 2px;
+  font-size: 12px;
+  white-space: normal;
+}
+
+.sesiones__tabla .sesiones__accion {
+  inline-size: 40px;
+  text-align: end;
+}
+
+.sesiones__mas-opciones {
+  inline-size: 32px;
+  block-size: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--cfg-texto-2);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sesiones__mas-opciones:hover {
+  background-color: var(--cfg-menu-activo);
+  color: var(--cfg-texto);
+}
+
+.sesiones__mas-opciones:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.sesiones__mas-opciones:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 .sesiones__insignia {
   flex: 0 0 auto;
-  padding: 0.125rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--cfg-texto-2);
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .sesiones__insignia--activa {
-  border-color: var(--color-success);
+  background-color: color-mix(in srgb, var(--color-success) 16%, transparent);
   color: var(--color-success);
 }
 
 .sesiones__insignia--sin-senal,
 .sesiones__insignia--pestana-cerrada {
-  border-color: var(--color-warning);
+  background-color: color-mix(in srgb, var(--color-warning) 16%, transparent);
   color: var(--color-warning);
 }
 
+.sesiones__insignia--pestana-cerrada {
+  background-color: color-mix(in srgb, var(--cfg-acento) 16%, transparent);
+  color: var(--cfg-acento);
+}
+
+/* «Actual» como en el adjunto de L62: borde y texto en el acento. */
+.sesiones__insignia--actual {
+  border: 1px solid color-mix(in srgb, var(--cfg-acento) 60%, transparent);
+  border-radius: 999px;
+  background: none;
+  color: var(--cfg-acento);
+}
+
+.sesiones__insignia--cerrandose {
+  background-color: color-mix(in srgb, var(--color-error) 16%, transparent);
+  color: var(--color-error-text);
+}
+
 .sesiones__plegable-resumen {
-  color: var(--color-accent);
+  color: var(--cfg-acento);
   cursor: pointer;
 }
 
@@ -861,9 +1135,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-field);
+  padding: 16px 20px;
+  border: 1px solid var(--cfg-borde);
+  border-radius: 16px;
+  background-color: var(--cfg-tarjeta);
 }
 
 .sesiones__estados-lista {
@@ -873,143 +1148,8 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-}
-
-.sesiones__volver {
-  align-self: flex-start;
-  padding: 0.25rem 0;
-  border: 0;
-  background: none;
-  color: var(--color-accent);
-  font: inherit;
-  cursor: pointer;
-}
-
-.sesiones__cabecera {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.sesiones__cabecera .sesiones__nombre {
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-}
-
-/*
-  Barra «Vida de esta sesión»: tres tramos de igual ancho y la marca «Ahora»
-  colocada por JS (style.insetInlineStart). Los hitos debajo son el mismo
-  contenido en texto; la barra lleva su resumen en aria-label.
-*/
-.sesiones__barra {
-  position: relative;
-  display: flex;
-  gap: 2px;
-  block-size: 0.5rem;
-  margin-block: 1.75rem 0.25rem;
-}
-
-.sesiones__tramo {
-  flex: 1 1 0;
-  border-radius: var(--radius-pill);
-}
-
-.sesiones__tramo--activa {
-  background-color: var(--color-success);
-}
-
-.sesiones__tramo--sin-senal {
-  background-color: var(--color-warning);
-}
-
-.sesiones__tramo--inactiva {
-  background-color: var(--color-text-subtle);
-}
-
-.sesiones__ahora {
-  position: absolute;
-  inset-block: -0.25rem;
-  inline-size: 2px;
-  background-color: var(--color-text);
-  transform: translateX(-1px);
-}
-
-.sesiones__ahora-texto {
-  position: absolute;
-  inset-block-end: calc(100% + 0.125rem);
-  color: var(--color-text);
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.sesiones__ahora-texto--centro {
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-}
-
-.sesiones__ahora-texto--inicio {
-  inset-inline-start: 0;
-}
-
-.sesiones__ahora-texto--fin {
-  inset-inline-end: 0;
-}
-
-.sesiones__hitos {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.875rem;
-}
-
-.sesiones__hitos li {
-  display: flex;
-  flex-direction: column;
-}
-
-.sesiones__hito-etiqueta {
-  color: var(--color-text-subtle);
-  font-size: 0.75rem;
-}
-
-.sesiones__datos-detalle {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin: 0;
-}
-
-.sesiones__dato {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
-  padding-block: 0.5rem;
-  border-block-end: 1px solid var(--color-border);
-}
-
-.sesiones__dato dt {
-  color: var(--color-text-muted);
-}
-
-.sesiones__dato dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.sesiones__acciones {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
+  color: var(--cfg-texto-2);
+  font-size: 13.5px;
 }
 
 @media (max-width: 760px) {
@@ -1077,6 +1217,18 @@
 
   .portal__telefono {
     max-inline-size: none;
+  }
+
+  .portal__fila,
+  .sesiones__item--cerrada {
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .portal__fila-icono,
+  .sesiones__icono-caja {
+    inline-size: 36px;
+    block-size: 36px;
   }
 }
 }

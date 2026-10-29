@@ -24,18 +24,16 @@ const {
   fraseMotivo,
   textoUbicacion,
   nombreDispositivo,
-  detalleNavegador,
   tipoDispositivo,
-  haceCuanto,
-  fechaRelativa,
   fechaCompleta,
+  fechaRelativa,
   textoCierre,
-  textoRecordarme,
-  tramosVida,
   textoInactivas,
   ETIQUETAS_ESTADO,
   CERRADAS_POR_PAGINA,
-  textoNoReconoces,
+  claseDispositivo,
+  resumirPorTipo,
+  textoNoReconocesResumen,
 } = require(path.join(ROOT, "src/app/features/portal/sesiones.nucleo.js"));
 
 const MIN = 60 * 1000;
@@ -260,15 +258,6 @@ test("device names read «Browser en System»; iOS uses the model", () => {
   assert.equal(nombreDispositivo({}), "Dispositivo desconocido");
 });
 
-test("the browser row carries real versions: «Edge 130 · Android 15»", () => {
-  assert.equal(
-    detalleNavegador({ navegador: "Edge", navegador_version: "130", sistema: "Android", sistema_version: "15" }),
-    "Edge 130 · Android 15"
-  );
-  assert.equal(detalleNavegador({ navegador: "Firefox", navegador_version: "131", sistema: "Windows" }), "Firefox 131 · Windows");
-  assert.equal(detalleNavegador({}), "Desconocido");
-});
-
 test("phones and tablets get the mobile icon, everything else the computer", () => {
   assert.equal(tipoDispositivo({ sistema: "iOS" }), "movil");
   assert.equal(tipoDispositivo({ sistema: "Android" }), "movil");
@@ -278,23 +267,11 @@ test("phones and tablets get the mobile icon, everything else the computer", () 
 
 /* ---------- Fechas ---------- */
 
-test("«Último uso: hace …»", () => {
-  assert.equal(haceCuanto(AHORA - 20 * 1000, AHORA), "hace un momento");
-  assert.equal(haceCuanto(AHORA - 25 * MIN, AHORA), "hace 25 min");
-  assert.equal(haceCuanto(AHORA - 3 * HORA, AHORA), "hace 3 h");
-  assert.equal(haceCuanto(AHORA - 1 * DIA, AHORA), "hace 1 día");
-  assert.equal(haceCuanto(AHORA - 4 * DIA, AHORA), "hace 4 días");
-});
-
 test("relative dates: today, tomorrow, yesterday, or day and month, in the given time zone", () => {
   assert.equal(fechaRelativa(AHORA + 2 * MIN, AHORA, ZONA), "hoy a las 6:11 p.m.");
   assert.equal(fechaRelativa(AHORA + 8 * HORA, AHORA, ZONA), "mañana a las 2:09 a.m.");
   assert.equal(fechaRelativa(AHORA - 20 * HORA, AHORA, ZONA), "ayer a las 10:09 p.m.");
   assert.equal(fechaRelativa(AHORA + 10 * DIA, AHORA, ZONA), "el 6 nov a las 6:09 p.m.");
-});
-
-test("full dates look like the mockup: «18 oct 2026, 6:04 a.m.»", () => {
-  assert.equal(fechaCompleta(Date.parse("2026-10-18T12:04:00Z"), ZONA), "18 oct 2026, 6:04 a.m.");
 });
 
 test("closing text: «si no se usa» only when idleness closes it; a closed tab says «a las HH:MM»", () => {
@@ -308,46 +285,9 @@ test("closing text: «si no se usa» only when idleness closes it; a closed tab 
   assert.equal(textoCierre(pestana, AHORA, ZONA), "Se cerrará a las 6:13 p.m.");
 });
 
-test("the «Recordarme» row states its rule (S1 corrections)", () => {
-  assert.equal(textoRecordarme(false), "No · se cierra a las 8 h sin uso");
-  assert.equal(textoRecordarme(true), "Sí · se cierra a los 30 días sin uso");
-});
-
 /* ---------- Barra «Vida de esta sesión» ---------- */
 
-test("the life bar has three stretches and places «Ahora» inside the current one", () => {
-  const uso = AHORA - 30 * MIN;
-  const vida = vidaDeSesion(fila({ ultimo_uso: iso(uso) }), AHORA);
-  const barra = tramosVida(vida, AHORA);
-  assert.deepEqual(barra.tramos.map((t) => t.clave), ["activa", "sin-senal", "inactiva"]);
-  assert.equal(barra.tramos[1].desde.getTime(), uso + 3 * MIN);
-  assert.equal(barra.tramos[2].desde.getTime(), uso + HORA);
-  assert.equal(barra.tramos[2].hasta.getTime(), uso + 8 * HORA);
-  assert.ok(barra.posicionAhora > 1 / 3 && barra.posicionAhora < 2 / 3, String(barra.posicionAhora));
-});
-
-test("without an idle stretch the bar has two parts and «Ahora» stays within 0..1", () => {
-  const inicio = AHORA - 23 * HORA - 30 * MIN;
-  const vida = vidaDeSesion(fila({ iniciada_en: iso(inicio), ultimo_uso: iso(AHORA - 10 * MIN) }), AHORA);
-  const barra = tramosVida(vida, AHORA);
-  assert.deepEqual(barra.tramos.map((t) => t.clave), ["activa", "sin-senal"]);
-  assert.ok(barra.posicionAhora >= 0 && barra.posicionAhora <= 1);
-});
-
 /* ---------- «¿No reconoces este dispositivo?» (L33) ---------- */
-
-test("the unknown-device hint depends on whether the account has a password", () => {
-  assert.deepEqual(textoNoReconoces(true), {
-    texto: "¿No reconoces este dispositivo? Ciérrala y ",
-    enlace: "cambia tu contraseña",
-    final: ".",
-  });
-  assert.deepEqual(textoNoReconoces(false), {
-    texto: "¿No reconoces este dispositivo? Ciérrala y revisa la seguridad de tu cuenta de Google.",
-    enlace: null,
-    final: "",
-  });
-});
 
 /* ---------- Bloque B: cableado de la página ---------- */
 
@@ -385,11 +325,6 @@ test("the sessions block lives in the «Sesiones» subview of «Acceso y segurid
   assert.match(PORTAL, /configurarSesionesActivas\(session\)/);
 });
 
-test("«cambia tu contraseña» opens the password subview (L45)", () => {
-  assert.match(CONTROLADOR, /href: "#contrasena", onclick: irAContrasena/);
-  assert.doesNotMatch(CONTROLADOR, /href: "#cuenta"/);
-});
-
 test("the controller never writes data as HTML: city and user agent come from outside", () => {
   assert.doesNotMatch(CONTROLADOR, /innerHTML|insertAdjacentHTML|outerHTML/);
 });
@@ -399,22 +334,19 @@ test("the controller refreshes only with the tab visible, about every minute (L3
   assert.match(CONTROLADOR, /60 \* 1000/);
 });
 
-test("the controller closes through the session RPCs and confirms only «Cerrar las demás» (L30)", () => {
+test("the controller closes through the session RPCs and confirms both one session and the others (L30, L62)", () => {
   assert.match(CONTROLADOR, /rpc\("sesion_cerrar", \{ p_id:/);
   assert.match(CONTROLADOR, /cerrarLasDemasSesiones\(\)/);
-  assert.equal((CONTROLADOR.match(/confirmarConTexto\(/g) || []).length, 1);
+  assert.equal((CONTROLADOR.match(/confirmarConTexto\(/g) || []).length, 2);
 });
 
 test("the controller shows the S1/L32/L33 texts", () => {
   for (const texto of [
-    "Esa sesión ya se cerró",
     "No pudimos cargar tus sesiones.",
     "Reintentar",
-    "Para salir de este dispositivo usa «Cerrar sesión»",
     "Cerrar esta sesión",
     "Cerrar las demás sesiones",
     "Mostrar más",
-    "Si este dispositivo se vuelve a usar antes, pasa a activa y la cuenta empieza de nuevo.",
   ]) {
     assert.ok(CONTROLADOR.includes(texto), texto);
   }
@@ -423,4 +355,194 @@ test("the controller shows the S1/L32/L33 texts", () => {
 test("the password change closes the others through the database, no longer with scope others (L30)", () => {
   assert.doesNotMatch(PORTAL, /scope: "others"/);
   assert.match(PORTAL, /await cerrarLasDemasSesiones\(\)/);
+});
+
+/* ---------- T9: resumen de «Acceso y seguridad» y estilo de la lista (S15, S16, S18, L59) ---------- */
+
+test("each device falls in one of four kinds: computers, phones, tablets or other (L59)", () => {
+  assert.equal(claseDispositivo({ sistema: "Windows" }), "computadora");
+  assert.equal(claseDispositivo({ sistema: "macOS" }), "computadora");
+  assert.equal(claseDispositivo({ sistema: "Linux" }), "computadora");
+  assert.equal(claseDispositivo({ sistema: "ChromeOS" }), "computadora");
+  assert.equal(claseDispositivo({ sistema: "iOS", modelo: "iPhone" }), "telefono");
+  assert.equal(claseDispositivo({ sistema: "Android" }), "telefono");
+  assert.equal(claseDispositivo({ sistema: "iOS", modelo: "iPad" }), "tableta");
+  assert.equal(claseDispositivo({}), "otro");
+  assert.equal(claseDispositivo({ sistema: "PlayStation" }), "otro");
+});
+
+test("the summary groups only open sessions by kind, like the mockup (S15, L59)", () => {
+  const filas = [
+    fila({ sistema: "Windows", modelo: null, ultimo_uso: iso(AHORA - 1 * MIN) }),
+    fila({ sistema: "Linux", modelo: null, ultimo_uso: iso(AHORA - 30 * MIN) }),
+    fila({ es_actual: true, sistema: "iOS", modelo: "iPhone", ultimo_uso: iso(AHORA - 1 * MIN) }),
+    fila({ sistema: "Android", modelo: null, ultimo_uso: iso(AHORA - 2 * HORA) }),
+    fila({ sistema: "Windows", modelo: null, cerrada_en: iso(AHORA - DIA), motivo_cierre: "inactividad" }),
+  ];
+  const resumen = resumirPorTipo(filas, AHORA);
+  assert.equal(resumen.total, 4, "las cerradas de los últimos 7 días no cuentan");
+  assert.deepEqual(resumen.grupos, [
+    { clase: "computadora", titulo: "2 sesiones en computadoras", detalle: "Windows, Linux · 1 activa ahora" },
+    { clase: "telefono", titulo: "2 sesiones en teléfonos", detalle: "iPhone (este dispositivo), Android · 1 activa ahora" },
+  ]);
+});
+
+test("the summary agrees in number, lists each system once and skips what it cannot name", () => {
+  const resumen = resumirPorTipo(
+    [
+      fila({ sistema: "Windows", modelo: null }),
+      fila({ sistema: "Windows", modelo: null, es_actual: true }),
+      fila({ sistema: "iOS", modelo: "iPad", ultimo_uso: iso(AHORA - 2 * HORA) }),
+      fila({ sistema: "Android", modelo: null, ultimo_uso: iso(AHORA - 2 * HORA) }),
+      fila({ sistema: null, navegador: null, modelo: null, ultimo_uso: iso(AHORA - 2 * HORA) }),
+    ],
+    AHORA,
+  );
+  assert.deepEqual(resumen.grupos, [
+    { clase: "computadora", titulo: "2 sesiones en computadoras", detalle: "Windows (este dispositivo) · 2 activas ahora" },
+    { clase: "telefono", titulo: "1 sesión en un teléfono", detalle: "Android" },
+    { clase: "tableta", titulo: "1 sesión en una tableta", detalle: "iPad" },
+    { clase: "otro", titulo: "1 sesión en otro dispositivo", detalle: "" },
+  ]);
+  assert.equal(resumirPorTipo([fila({ sistema: "macOS", modelo: null })], AHORA).grupos[0].titulo, "1 sesión en una computadora");
+  assert.deepEqual(resumirPorTipo([], AHORA), { total: 0, grupos: [] });
+  assert.deepEqual(resumirPorTipo(null, AHORA), { total: 0, grupos: [] });
+});
+
+test("the summary reads the user agent when a session has no heartbeat yet", () => {
+  const sinLatido = fila({ sistema: null, navegador: null, modelo: null });
+  const leer = () => ({ navegador: "Chrome", sistema: "Android", modelo: null });
+  assert.equal(resumirPorTipo([sinLatido], AHORA, leer).grupos[0].clase, "telefono");
+});
+
+test("the unknown-device note under the summary depends on the password (S16)", () => {
+  assert.equal(textoNoReconocesResumen(true), "¿No reconoces un dispositivo? Ciérralo y cambia tu contraseña.");
+  assert.equal(
+    textoNoReconocesResumen(false),
+    "¿No reconoces un dispositivo? Ciérralo desde «Administrar todos los dispositivos».",
+  );
+});
+
+test("a session past its limit that waits for the cron is «Se está cerrando», never a time in the past (L42, L59)", () => {
+  const vencida = vidaDeSesion(fila({ iniciada_en: iso(AHORA - 24 * HORA - 2 * MIN), ultimo_uso: iso(AHORA - 1 * MIN) }), AHORA);
+  assert.equal(vencida.estado, "cerrandose");
+  assert.equal(ETIQUETAS_ESTADO.cerrandose, "Se está cerrando");
+  assert.equal(textoCierre(vencida, AHORA, ZONA), "Se cerrará en unos minutos");
+
+  const pestana = vidaDeSesion(fila({ pestana_cerrada_en: iso(AHORA - 6 * MIN), ultimo_uso: iso(AHORA - 7 * MIN) }), AHORA);
+  assert.equal(pestana.estado, "cerrandose");
+  const enPlazo = vidaDeSesion(fila({ ultimo_uso: iso(AHORA - 7 * HORA) }), AHORA);
+  assert.equal(enPlazo.estado, "inactiva", "antes del límite sigue como antes");
+});
+
+test("a closing session stays in the list with the others and counts as open, not active", () => {
+  const cerrandose = fila({ iniciada_en: iso(AHORA - 25 * HORA), ultimo_uso: iso(AHORA - 1 * MIN), sistema: "Windows", modelo: null });
+  const grupos = agruparSesiones([cerrandose], AHORA);
+  assert.equal(grupos.otras.length, 1);
+  assert.equal(resumirPorTipo([cerrandose], AHORA).grupos[0].detalle, "Windows");
+});
+
+test("«Acceso y seguridad» is a summary: sign-in, devices and account (S15, L59)", () => {
+  const inicio = HTML.indexOf('id="seccion-cuenta"');
+  const cuenta = HTML.slice(inicio, HTML.indexOf("</section>", inicio));
+  assert.match(cuenta, /Revisa cómo entras a tu cuenta, desde qué dispositivos y cómo salir de ella\./);
+  assert.doesNotMatch(cuenta, /Aquí vas a ver el correo/);
+  for (const titulo of ["Inicio de sesión", "Dispositivos con acceso a tu cuenta", "Cuenta"]) {
+    assert.match(cuenta, new RegExp(`class="portal__grupo-titulo"[^>]*>${titulo}<`), titulo);
+  }
+  assert.match(cuenta, /id="dispositivosResumen"/);
+  assert.match(cuenta, /href="#sesiones"[\s\S]*?Administrar todos los dispositivos[\s\S]*?id="dispositivosTotal"/);
+  assert.match(cuenta, /id="notaNoReconoces"/);
+  assert.match(cuenta, /href="#contrasena"[\s\S]*?Al menos 8 caracteres, una letra mayúscula, una letra minúscula y un número\./);
+});
+
+test("a Google-only account sees «Inicias sesión con Google» with its link button instead of «Contraseña ›» (S16)", () => {
+  const inicio = HTML.indexOf('id="avisoSinContrasena"');
+  const aviso = HTML.slice(inicio, HTML.indexOf('id="filaContrasena"', inicio));
+  assert.match(aviso, /Inicias sesión con Google/);
+  assert.match(aviso, /Tu cuenta todavía no tiene contraseña\. Si quieres crear una, te enviamos un enlace a tu correo\./);
+  assert.match(aviso, /id="botonEnlaceContrasena"[^>]*>Enviarme un enlace</);
+  assert.match(aviso, /id="avisoSinContrasenaEstado"[^>]*role="status"/);
+  assert.match(PORTAL, /filaContrasena[\s\S]{0,80}hidden = !tieneContrasena/);
+  // Quien llegue a #contrasena sin contraseña ve a dónde ir, no un título vacío.
+  assert.match(HTML, /id="contrasenaSinContrasena" hidden>[^<]*«Enviarme un enlace» en <a href="#cuenta">/);
+  assert.match(PORTAL, /contrasenaSinContrasena[\s\S]{0,80}hidden = tieneContrasena/);
+});
+
+test("the controller fills the summary from the same list and refreshes while either view is visible", () => {
+  assert.match(CONTROLADOR, /resumirPorTipo\(estado\.filas, ahora, dispositivoDeFila\)/);
+  assert.match(CONTROLADOR, /textoNoReconocesResumen\(tieneContrasena\)/);
+  assert.match(CONTROLADOR, /"No pudimos cargar tus dispositivos\."/);
+  assert.match(CONTROLADOR, /seccionResumen/);
+});
+
+test("the legend explains «Se está cerrando»", () => {
+  assert.match(HTML, /sesiones__insignia--cerrandose">Se está cerrando<\/span> ya llegó a su límite y se cierra en los próximos minutos\./);
+  assert.match(read("src/app/features/portal/portal.css"), /\.sesiones__insignia--cerrandose\s*\{/);
+});
+
+test("the list takes the modal look: rows in one card with separators and the icon in a square (S18)", () => {
+  const css = read("src/app/features/portal/portal.css");
+  const bloque = css.slice(css.indexOf(".sesiones {"));
+  assert.match(bloque, /\.sesiones__lista\s*\{[^}]*background-color: var\(--cfg-tarjeta\);/);
+  assert.match(bloque, /\.sesiones__item \+ \.sesiones__item\s*\{\s*border-block-start: 1px solid var\(--cfg-borde\);/);
+  assert.match(bloque, /\.sesiones__icono-caja\s*\{/);
+  assert.match(CONTROLADOR, /sesiones__icono-caja/);
+});
+
+/* ---------- L61: tocar una sesión no hace nada; se cierra desde su fila ---------- */
+
+const FILA_ABIERTA = CONTROLADOR.match(/function filaAbierta[\s\S]*?\n  }\n/)[0];
+
+/* ---------- L62: la lista es una tabla y «⋯» pide confirmación ---------- */
+
+test("full dates look like the attachment: «18 oct 2026, 6:04 a.m.» (L62)", () => {
+  assert.equal(fechaCompleta(Date.parse("2026-10-18T12:04:00Z"), ZONA), "18 oct 2026, 6:04 a.m.");
+});
+
+test("open sessions are a table: Dispositivo, Ubicación, Creado, Actualizado and «⋯» (L62)", () => {
+  const tabla = CONTROLADOR.match(/function tablaSesiones[\s\S]*?\n  }\n/)[0];
+  for (const columna of ["Dispositivo", "Ubicación", "Creado", "Actualizado"]) {
+    assert.match(tabla, new RegExp(`el\\("th", \\{[^}]*texto: "${columna}"`), columna);
+  }
+  assert.match(tabla, /class: "sesiones__tabla-envoltorio"/);
+  assert.match(FILA_ABIERTA, /fechaCompleta\(vida\.iniciadaEn\)/, "Creado");
+  assert.match(FILA_ABIERTA, /fechaCompleta\(vida\.ultimoUso\)/, "Actualizado");
+  assert.match(FILA_ABIERTA, /textoCierre\(vida, ahora\)/, "«Se cerrará …» bajo Actualizado");
+  assert.doesNotMatch(FILA_ABIERTA, /Recordarme/, "«Recordarme» sale de la fila");
+});
+
+test("on a phone the table slides inside its own box; the page never scrolls sideways (L62)", () => {
+  const css = read("src/app/features/portal/portal.css");
+  assert.match(css, /\.sesiones__tabla-envoltorio\s*\{[^}]*overflow-x: auto;/);
+  assert.match(css, /\.sesiones__tabla\s*\{[^}]*min-inline-size: \d+px;/);
+  const bloque = css.slice(css.indexOf(".sesiones {"));
+  assert.doesNotMatch(bloque, /overflow-wrap: anywhere/);
+  assert.match(bloque, /\.sesiones a\s*\{\s*color: var\(--cfg-acento\);/);
+});
+
+test("the state badge sits next to the name, and the current session says «Actual» (L62)", () => {
+  const celda = FILA_ABIERTA.slice(FILA_ABIERTA.indexOf('class: "sesiones__dispositivo"'));
+  assert.match(celda, /fila\.es_actual\s*\?\s*el\("span", \{ class: "sesiones__insignia sesiones__insignia--actual", texto: "Actual" \}\)\s*:\s*insignia\(vida\.estado\)/);
+  assert.match(read("src/app/features/portal/portal.css"), /\.sesiones__insignia--actual\s*\{/);
+});
+
+test("tapping a row still does nothing: its only control is «⋯», and the current one has none (L61, L62)", () => {
+  assert.equal((FILA_ABIERTA.match(/onclick:/g) || []).length, 1);
+  assert.match(
+    FILA_ABIERTA,
+    /fila\.es_actual\s*\?\s*null\s*:\s*el\("button", \{[^)]*?"aria-label": `Cerrar la sesión de \$\{nombre\}`,[^)]*?onclick: \(evento\) => cerrarUna\(fila\.id, evento\.currentTarget\),\s*texto: "⋯",?\s*\}\)/,
+  );
+  assert.doesNotMatch(CONTROLADOR, /abrirDetalle|dibujarDetalle|sesionesDetalle|Detalle de sesión/);
+});
+
+test("«⋯» asks first: «¿Cerrar esta sesión?» with «Cancelar» and «Cerrar sesión», then closes (L62)", () => {
+  const cerrar = CONTROLADOR.match(/async function cerrarUna[\s\S]*?\n  }\n/)[0];
+  assert.match(cerrar, /titulo: "¿Cerrar esta sesión\?"/);
+  assert.match(cerrar, /mensaje: "Ese dispositivo perderá acceso a tu cuenta\."/);
+  assert.match(cerrar, /etiquetaConfirmar: "Cerrar sesión"/);
+  assert.match(cerrar, /if \(!confirmado\) return;/);
+  assert.ok(cerrar.indexOf("confirmarConTexto(") < cerrar.indexOf('rpc("sesion_cerrar"'), "confirma antes de cerrar");
+  // La fila cerrada desaparece con su botón: el foco vuelve al título.
+  assert.match(cerrar, /if \(cerrada && titulo\) titulo\.focus\(\)/);
 });

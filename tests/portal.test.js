@@ -164,6 +164,11 @@ test("validarPerfil rejects a phone number with letters", () => {
   assert.equal(resultado.campo, "telefono");
 });
 
+test("the invalid phone error talks about the number alone: the country picker already sets the code (L59)", () => {
+  const resultado = validarPerfil({ nombre: "Ana", apellidos: "Pérez", telefono: "+52abc12345" });
+  assert.equal(resultado.mensaje, "Revisa el número: escribe solo dígitos, sin la lada, por ejemplo 55 1234 5678.");
+});
+
 test("validarPerfil rejects a phone number without the leading +", () => {
   const resultado = validarPerfil({ nombre: "Ana", apellidos: "Pérez", telefono: "525512345678" });
   assert.equal(resultado.ok, false);
@@ -505,9 +510,11 @@ test("the password form lives in its own subview, not in «Acceso y seguridad»"
   const html = read("src/app/features/portal/index.html");
   const contrasena = markupSeccion(html, "contrasena");
   assert.match(contrasena, /<form id="formContrasena"/);
-  assert.match(contrasena, /id="avisoSinContrasena"/);
   const cuenta = markupSeccion(html, "cuenta");
   assert.doesNotMatch(cuenta, /id="formContrasena"/);
+  // S16: una cuenta sólo de Google ve el aviso en el resumen, en lugar de la fila.
+  assert.match(cuenta, /id="avisoSinContrasena"/);
+  assert.doesNotMatch(contrasena, /id="avisoSinContrasena"/);
   assert.match(cuenta, /href="#contrasena"/);
   assert.match(cuenta, /href="#sesiones"/);
   assert.match(cuenta, /id="formEliminarCuenta"/, "Eliminar cuenta se queda en Acceso y seguridad: ahí vuelve Google");

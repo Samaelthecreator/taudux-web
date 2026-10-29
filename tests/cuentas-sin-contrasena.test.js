@@ -88,12 +88,16 @@ test("user_metadata.tiene_contrasena en false (o ausente) no habilita nada por s
    .portal__form[hidden] que ya existe (ver portal.css), en vez de inventar una
    clase nueva sin su [hidden] hermano. */
 
-test("el aviso de contraseña ausente nace hidden y reusa la clase portal__form", () => {
+/* Desde T9 (S16) el aviso es una fila del resumen de «Acceso y seguridad»:
+   .portal__fila tiene display propio, así que necesita su [hidden] hermano. */
+test("el aviso de contraseña ausente nace hidden y es una fila del resumen", () => {
   const html = read("src/app/features/portal/index.html");
-  const bloque = html.match(/<div class="portal__form" id="avisoSinContrasena"[^>]*>/);
+  const bloque = html.match(/<div class="portal__fila[^"]*" id="avisoSinContrasena"[^>]*>/);
   assert.ok(bloque, "avisoSinContrasena not found");
   assert.match(bloque[0], /\bhidden\b/);
   assert.match(html, /id="botonEnlaceContrasena"/);
+  const css = read("src/app/features/portal/portal.css");
+  assert.match(css, /\.portal__fila\[hidden\]\s*\{\s*display:\s*none;/);
 });
 
 test("el aviso de contraseña ausente en eliminar-cuenta nace hidden y ofrece reautenticarse con Google", () => {

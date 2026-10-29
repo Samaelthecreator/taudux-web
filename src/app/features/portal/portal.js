@@ -448,7 +448,12 @@
     form.hidden = !tieneContrasena;
     form.elements.actual.required = tieneContrasena;
     form.elements.actual.disabled = !tieneContrasena;
+    // S16: sin contraseña, el resumen cambia «Contraseña ›» por «Inicias sesión con Google».
     if (aviso) aviso.hidden = tieneContrasena;
+    const filaContrasena = document.getElementById("filaContrasena");
+    if (filaContrasena) filaContrasena.hidden = !tieneContrasena;
+    const contrasenaSinContrasena = document.getElementById("contrasenaSinContrasena");
+    if (contrasenaSinContrasena) contrasenaSinContrasena.hidden = tieneContrasena;
 
     if (!tieneContrasena) {
       configurarEnvioEnlaceContrasena({

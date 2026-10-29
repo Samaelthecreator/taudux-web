@@ -50,7 +50,8 @@ function validarTelefono(valor) {
     return {
       ok: false,
       campo: "telefono",
-      mensaje: "El teléfono debe incluir el código de país, ej. +525512345678.",
+      // La lada la pone el selector de país (T8): el error habla sólo del número (L59).
+      mensaje: "Revisa el número: escribe solo dígitos, sin la lada, por ejemplo 55 1234 5678.",
     };
   }
   return { ok: true };
