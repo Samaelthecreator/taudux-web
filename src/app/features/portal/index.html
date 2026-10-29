@@ -94,27 +94,56 @@
                 <h2 class="portal__section-title" id="tituloPerfil" tabindex="-1">Editar perfil</h2>
                 <p class="portal__section-intro">Actualiza tu nombre, apellidos y teléfono.</p>
 
-                <form id="formPerfil" class="portal__form" novalidate>
-                  <p class="portal__status" id="perfilStatus" role="alert" tabindex="-1" hidden></p>
+                <form id="formNombre" class="portal__tarjeta" aria-labelledby="tituloTarjetaNombre" novalidate>
+                  <div class="portal__tarjeta-cuerpo">
+                    <h3 class="portal__tarjeta-titulo" id="tituloTarjetaNombre">Tu nombre</h3>
+                    <p class="portal__tarjeta-desc">Escribe tu nombre y apellidos como quieres que aparezcan.</p>
+                    <p class="portal__status" id="nombreStatus" role="alert" tabindex="-1" hidden></p>
 
-                  <div class="portal__field-group">
-                    <label for="perfilNombre">Nombre</label>
-                    <input class="field" type="text" id="perfilNombre" name="nombre" autocomplete="given-name" required>
+                    <div class="portal__campos">
+                      <div class="portal__field-group">
+                        <label for="perfilNombre">Nombre</label>
+                        <input class="field" type="text" id="perfilNombre" name="nombre" autocomplete="given-name" required>
+                      </div>
+
+                      <div class="portal__field-group">
+                        <label for="perfilApellidos">Apellidos</label>
+                        <input class="field" type="text" id="perfilApellidos" name="apellidos" autocomplete="family-name" required>
+                      </div>
+                    </div>
                   </div>
-
-                  <div class="portal__field-group">
-                    <label for="perfilApellidos">Apellidos</label>
-                    <input class="field" type="text" id="perfilApellidos" name="apellidos" autocomplete="family-name" required>
+                  <div class="portal__tarjeta-pie">
+                    <button type="submit" class="portal__boton-guardar" data-loading-text="Guardando…">Guardar</button>
                   </div>
+                </form>
 
-                  <div class="portal__field-group">
-                    <label for="perfilTelefono">Teléfono</label>
-                    <input class="field" type="tel" id="perfilTelefono" name="telefono" autocomplete="tel">
-                    <small>Incluye el código de país, por ejemplo +52 55 1234 5678.</small>
+                <form id="formTelefono" class="portal__tarjeta" aria-labelledby="tituloTarjetaTelefono" novalidate>
+                  <div class="portal__tarjeta-cuerpo">
+                    <h3 class="portal__tarjeta-titulo" id="tituloTarjetaTelefono">Tu teléfono <span class="portal__opcional">(opcional)</span></h3>
+                    <p class="portal__tarjeta-desc">Incluye el código de país, por ejemplo +52 55 1234 5678.</p>
+                    <p class="portal__status" id="telefonoStatus" role="alert" tabindex="-1" hidden></p>
+
+                    <div class="portal__telefono">
+                      <div class="portal__telefono-caja">
+                        <button type="button" class="portal__pais" id="botonPais" aria-haspopup="listbox" aria-expanded="false" aria-controls="listaPaises" aria-label="País: México +52">
+                          <span class="portal__pais-bandera" id="banderaPais"></span>
+                          <span id="ladaPais">+52</span>
+                          <svg class="portal__pais-flecha" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <label for="perfilTelefono" class="u-visually-hidden">Número de teléfono</label>
+                        <input class="portal__telefono-numero" type="tel" id="perfilTelefono" name="telefono" inputmode="tel" autocomplete="tel-national" placeholder="55 1234 5678">
+                      </div>
+                      <div class="portal__paises" id="popoverPaises" hidden>
+                        <div class="portal__paises-busqueda">
+                          <label for="buscarPais" class="u-visually-hidden">Buscar país</label>
+                          <input class="field" id="buscarPais" type="search" placeholder="Buscar país o lada" autocomplete="off">
+                        </div>
+                        <ul class="portal__paises-lista" id="listaPaises" role="listbox" aria-label="País"></ul>
+                      </div>
+                    </div>
                   </div>
-
-                  <div class="portal__form-actions">
-                    <button type="submit" class="button button--glow" data-loading-text="Guardando…">Guardar cambios</button>
+                  <div class="portal__tarjeta-pie">
+                    <button type="submit" class="portal__boton-guardar" data-loading-text="Guardando…">Guardar</button>
                   </div>
                 </form>
               </section>
@@ -267,15 +296,11 @@
                   <p class="portal__status" id="correoStatus" role="alert" tabindex="-1" hidden></p>
 
                   <div class="portal__field-group">
-                    <label class="portal__checkbox" for="correoCursoNuevo">
-                      <input type="checkbox" id="correoCursoNuevo" name="avisosCursoNuevo">
-                      <span>Avísame en la app cuando se publique un curso nuevo.</span>
-                    </label>
+                    <div class="portal__aviso">
+                      <label class="portal__aviso-texto" for="correoCursoNuevo">Avísame en la app cuando se publique un curso nuevo.</label>
+                      <button type="button" class="portal__switch" id="correoCursoNuevo" role="switch" aria-checked="false"><span class="portal__switch-perilla" aria-hidden="true"></span></button>
+                    </div>
                     <p class="portal__field-note">Puedes desactivarlo cuando quieras desde aquí. Necesitas tener la app instalada para recibir estos avisos.</p>
-                  </div>
-
-                  <div class="portal__form-actions">
-                    <button type="submit" class="button button--glow" data-loading-text="Guardando…">Guardar cambios</button>
                   </div>
                 </form>
               </section>
@@ -320,6 +345,7 @@
   <script src="/app/features/portal/portal.secciones.js"></script>
   <script src="/app/features/portal/portal.perfil.js"></script>
   <script src="/app/features/portal/portal.correo.js"></script>
+  <script src="/app/features/portal/portal.telefono.js"></script>
   <script src="/app/features/portal/portal.reauth.js"></script>
   <script src="/app/features/portal/sesiones.nucleo.js"></script>
   <script src="/app/features/portal/portal.sesiones.js"></script>

@@ -344,17 +344,308 @@
   font-size: 0.85rem;
 }
 
-.portal__checkbox {
+/*
+  Tarjetas de «Editar perfil» (T8, S15): cuerpo con título, descripción y
+  campos; pie con «Guardar» a la derecha. Medidas de la maqueta.
+*/
+.portal__tarjeta {
+  border: 1px solid var(--cfg-borde);
+  border-radius: 20px;
+  background-color: var(--cfg-tarjeta);
+}
+
+.portal__tarjeta-cuerpo {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+.portal__tarjeta-titulo {
+  margin: 0;
+  color: var(--cfg-texto);
+  font-family: "Orbitron", system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.portal__opcional {
+  color: var(--cfg-texto-2);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.portal__tarjeta-desc {
+  margin: -8px 0 0;
+  color: var(--cfg-texto-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.portal__campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.portal__tarjeta-pie {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-block-start: 1px solid var(--cfg-borde);
+  border-radius: 0 0 20px 20px;
+  background-color: var(--cfg-pie);
+}
+
+.portal__boton-guardar {
+  min-block-size: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background-color: var(--cfg-primario);
+  color: var(--cfg-texto);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.portal__checkbox input[type="checkbox"] {
-  inline-size: 1.1rem;
-  block-size: 1.1rem;
-  accent-color: var(--color-accent);
+.portal__boton-guardar:hover {
+  background-color: #1656c2;
+}
+
+.portal__boton-guardar:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* Teléfono: botón de país + número en una sola caja, y la lista debajo. */
+.portal__telefono {
+  position: relative;
+  max-inline-size: 380px;
+}
+
+.portal__telefono-caja {
+  display: flex;
+  align-items: stretch;
+  block-size: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field);
+  background: var(--color-field);
+}
+
+.portal__telefono-caja:focus-within {
+  border-color: var(--color-accent);
+}
+
+.portal__pais {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 12px;
+  border: 0;
+  border-inline-end: 1px solid var(--color-border);
+  border-radius: var(--radius-field) 0 0 var(--radius-field);
+  background: transparent;
+  color: var(--cfg-texto);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.portal__pais:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.portal__pais:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.portal__pais-flecha {
+  color: var(--cfg-texto-2);
+  transition: transform 0.2s;
+}
+
+.portal__pais[aria-expanded="true"] .portal__pais-flecha {
+  transform: rotate(180deg);
+}
+
+.portal__pais-bandera {
+  display: flex;
+}
+
+/*
+  inline-size: 0 y que crezca con flex: sin esto, el ancho propio del input
+  ensancha la columna de la sección y a 390 px la página scrollea de lado.
+*/
+.portal__telefono-numero {
+  flex: 1;
+  inline-size: 0;
+  min-inline-size: 0;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--cfg-texto);
+  font: inherit;
+  font-size: 15px;
+}
+
+.portal__telefono-numero:focus {
+  outline: none;
+}
+
+.portal__bandera {
+  flex: none;
+  inline-size: 20px;
+  block-size: 15px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.portal__bandera-texto {
+  flex: none;
+  inline-size: 22px;
+  color: var(--cfg-texto-2);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.portal__paises {
+  position: absolute;
+  inset-block-start: 54px;
+  inset-inline-start: 0;
+  z-index: 20;
+  inline-size: min(340px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--cfg-borde);
+  border-radius: 12px;
+  background-color: var(--cfg-tarjeta);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.portal__paises-busqueda {
+  padding: 8px;
+  border-block-end: 1px solid var(--cfg-borde);
+}
+
+.portal__paises-busqueda .field {
+  padding: 0.6rem 0.75rem;
+  font-size: 14px;
+}
+
+.portal__paises-lista {
+  max-block-size: 260px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.portal__paises-separador {
+  block-size: 1px;
+  margin: 6px 4px;
+  background-color: var(--cfg-borde);
+}
+
+.portal__paises-vacio {
+  padding: 12px;
+  color: var(--cfg-texto-2);
+  font-size: 14px;
+}
+
+.portal__pais-opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  inline-size: 100%;
+  min-block-size: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cfg-texto);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.portal__pais-opcion:hover,
+.portal__pais-opcion:focus-visible {
+  background-color: var(--cfg-pie);
+  outline: none;
+}
+
+.portal__pais-opcion[aria-selected="true"] {
+  background-color: #0f2347;
+}
+
+.portal__pais-lada {
+  color: var(--cfg-texto-2);
+}
+
+/*
+  Interruptor del aviso de curso nuevo (S17): apagado en gris, encendido en
+  el azul de «Guardar», perilla blanca.
+*/
+.portal__aviso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.portal__aviso-texto {
+  min-inline-size: 0;
+  cursor: pointer;
+}
+
+.portal__switch {
+  position: relative;
+  flex: none;
+  inline-size: 44px;
+  block-size: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background-color: #303030;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.portal__switch[aria-checked="true"] {
+  background-color: var(--cfg-primario);
+}
+
+.portal__switch:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.portal__switch-perilla {
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-start: 3px;
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 50%;
+  background-color: #fff;
+  transition: transform 0.2s;
+}
+
+.portal__switch[aria-checked="true"] .portal__switch-perilla {
+  transform: translateX(20px);
+}
+
+.portal__form[aria-busy="true"] .portal__switch {
+  cursor: progress;
 }
 
 .portal__account-actions {
@@ -778,6 +1069,14 @@
   .portal__nav-icono {
     inline-size: 18px;
     block-size: 18px;
+  }
+
+  .portal__campos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .portal__telefono {
+    max-inline-size: none;
   }
 }
 }

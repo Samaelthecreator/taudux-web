@@ -135,8 +135,7 @@
 
   /* La casilla de "Recordarme".
    *
-   * Mismo patrón que `.portal__checkbox`, que es el precedente del sitio: el
-   * `<label>` envuelve al input, así que el texto también alterna la casilla —
+   * El `<label>` envuelve al input, así que el texto también alterna la casilla —
    * en una pantalla táctil, la diferencia entre un blanco de 17px y uno de
    * toda la línea.
    *

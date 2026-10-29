@@ -107,6 +107,15 @@ function camposModificados(original, actual) {
   return cambios;
 }
 
+/*
+  Cada tarjeta de "Editar perfil" (T8: «Tu nombre», «Tu teléfono») guarda
+  sólo sus campos: lo que no trae se toma de lo guardado, así nunca aparece
+  como cambio. Un teléfono viejo inválido no bloquea guardar el nombre.
+*/
+function cambiosDeTarjeta(guardado, valoresDeLaTarjeta) {
+  return camposModificados(guardado, { ...normalizarPerfil(guardado), ...valoresDeLaTarjeta });
+}
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     LONGITUD_MAXIMA_NOMBRE_PERFIL,
@@ -115,5 +124,6 @@ if (typeof module === "object" && module.exports) {
     validarPerfil,
     validarCambios,
     camposModificados,
+    cambiosDeTarjeta,
   });
 }

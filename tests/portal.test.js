@@ -19,11 +19,13 @@ const {
   validarPerfil,
   validarCambios,
   camposModificados,
+  cambiosDeTarjeta,
 } = require(path.join(ROOT, "src/app/features/portal/portal.perfil.js"));
 
 const {
   normalizarPreferenciasCorreo,
   cambiosPreferenciasCorreo,
+  alternarPreferenciaCorreo,
 } = require(path.join(ROOT, "src/app/features/portal/portal.correo.js"));
 
 /* Bloque A — núcleo puro. */
@@ -348,9 +350,9 @@ test("portal forms declare a flex layout with the gap .password-requirements dep
   assert.match(match[1], /gap:\s*1rem/);
 });
 
-test("the three portal forms carry the portal__form layout class", () => {
+test("the password and notification forms carry the portal__form layout class", () => {
   const html = read("src/app/features/portal/index.html");
-  for (const id of ["formPerfil", "formContrasena", "formCorreo"]) {
+  for (const id of ["formContrasena", "formCorreo"]) {
     const formTag = html.match(new RegExp(`<form id="${id}"[^>]*>`));
     assert.ok(formTag, `<form id="${id}"> not found`);
     assert.match(formTag[0], /class="portal__form"/, `#${id} is missing class="portal__form"`);
@@ -570,15 +572,19 @@ test("the email preference section is now declared available", () => {
   assert.equal(correo.disponible, true);
 });
 
-test("the email preference section ships exactly one checkbox, an alert region, and a submit button", () => {
+test("the notification section ships one switch and an alert region, with no save button (S17)", () => {
   const html = read("src/app/features/portal/index.html");
   const markup = markupSeccion(html, "correo");
 
-  const inputs = markup.match(/<input/gi) || [];
-  assert.equal(inputs.length, 1, "la sección de correo debe tener un solo input");
-  assert.match(markup, /<input[^>]*type="checkbox"[^>]*id="correoCursoNuevo"/);
+  assert.doesNotMatch(markup, /<input/i, "el interruptor reemplaza a la palomita");
+  const interruptor = markup.match(/<button[^>]*id="correoCursoNuevo"[^>]*>/);
+  assert.ok(interruptor, "falta el interruptor #correoCursoNuevo");
+  assert.match(interruptor[0], /type="button"/);
+  assert.match(interruptor[0], /role="switch"/);
+  assert.match(interruptor[0], /aria-checked="false"/);
+  assert.match(markup, /<label[^>]*for="correoCursoNuevo"[^>]*>Avísame en la app cuando se publique un curso nuevo\.<\/label>/);
   assert.match(markup, /id="correoStatus"[^>]*role="alert"/);
-  assert.match(markup, /<button[^>]*type="submit"/);
+  assert.doesNotMatch(markup, /type="submit"/, "se guarda al tocarlo, sin «Guardar»");
   assert.doesNotMatch(markup, /coming-soon__description/, "ya no es un placeholder");
 });
 
@@ -627,7 +633,7 @@ test("the email preference section no longer promises delivery by correo: it's p
 
   const titulo = markup.match(/<h2[^>]*>([^<]*)<\/h2>/)[1];
   const intro = markup.match(/portal__section-intro">([^<]*)<\/p>/)[1];
-  const etiquetaCheckbox = markup.match(/<span>([^<]*)<\/span>/)[1];
+  const etiquetaCheckbox = markup.match(/<label[^>]*>([^<]*)<\/label>/)[1];
   const nota = markup.match(/portal__field-note">([^<]*)<\/p>/)[1];
 
   [titulo, intro, etiquetaCheckbox, nota].forEach((texto) => {
@@ -710,4 +716,143 @@ test("section titles and their introductions use the mockup typography", () => {
   const intro = regla(".portal__section-title + .portal__section-intro");
   assert.match(intro, /font-size:\s*15px/);
   assert.match(intro, /color:\s*var\(--cfg-texto-2\)/);
+});
+
+/*
+  T8 (S15, S17, L56): «Editar perfil» en dos tarjetas que guardan cada una lo
+  suyo, y el aviso de curso nuevo con interruptor.
+*/
+test("«Editar perfil» keeps its introduction and splits into the «Tu nombre» and «Tu teléfono» cards", () => {
+  const markup = markupSeccion(read("src/app/features/portal/index.html"), "perfil");
+  assert.match(markup, /portal__section-intro">Actualiza tu nombre, apellidos y teléfono\.<\/p>/);
+
+  const nombre = markup.match(/<form id="formNombre"[\s\S]*?<\/form>/);
+  assert.ok(nombre, "falta la tarjeta #formNombre");
+  assert.match(nombre[0], />Tu nombre</);
+  assert.match(nombre[0], />Escribe tu nombre y apellidos como quieres que aparezcan\.</);
+  assert.match(nombre[0], /id="perfilNombre"/);
+  assert.match(nombre[0], /id="perfilApellidos"/);
+  assert.match(nombre[0], /<label for="perfilApellidos">Apellidos<\/label>/);
+  assert.match(nombre[0], /id="nombreStatus"[^>]*role="alert"/);
+  assert.match(nombre[0], /<button type="submit"[^>]*>Guardar<\/button>/);
+  assert.doesNotMatch(nombre[0], /perfilTelefono/);
+
+  const telefono = markup.match(/<form id="formTelefono"[\s\S]*?<\/form>/);
+  assert.ok(telefono, "falta la tarjeta #formTelefono");
+  assert.match(telefono[0], />Tu teléfono <span class="portal__opcional">\(opcional\)<\/span></);
+  assert.match(telefono[0], />Incluye el código de país, por ejemplo \+52 55 1234 5678\.</);
+  assert.match(telefono[0], /id="telefonoStatus"[^>]*role="alert"/);
+  assert.match(telefono[0], /<button type="submit"[^>]*>Guardar<\/button>/);
+
+  // Sin los textos de la maqueta que no aplican a Taudux (L56).
+  assert.doesNotMatch(markup, /SMS|Máximo 50 caracteres|personas con las que trabajas|avisos de seguridad/);
+});
+
+test("the phone card has a country button with a searchable list and the national number apart", () => {
+  const markup = markupSeccion(read("src/app/features/portal/index.html"), "perfil");
+  const boton = markup.match(/<button[^>]*id="botonPais"[^>]*>/);
+  assert.ok(boton, "falta el botón de país");
+  assert.match(boton[0], /type="button"/);
+  assert.match(boton[0], /aria-haspopup="listbox"/);
+  assert.match(boton[0], /aria-expanded="false"/);
+  assert.match(boton[0], /aria-controls="listaPaises"/);
+  assert.match(markup, /<input[^>]*id="buscarPais"[^>]*type="search"/);
+  assert.match(markup, /<ul[^>]*id="listaPaises"[^>]*role="listbox"/);
+  const numero = markup.match(/<input[^>]*id="perfilTelefono"[^>]*>/);
+  assert.match(numero[0], /type="tel"/);
+  assert.match(numero[0], /autocomplete="tel-national"/);
+  assert.match(markup, /<label for="perfilTelefono"[^>]*>Número de teléfono<\/label>/);
+});
+
+test("flags are served from the site, never from flagcdn.com (L56)", () => {
+  const html = read("src/app/features/portal/index.html");
+  const js = read("src/app/features/portal/portal.js");
+  assert.doesNotMatch(html + js, /flagcdn/);
+  assert.match(js, /\/assets\/vendor\/flag-icons-7\.2\.3\//);
+});
+
+test("portal.telefono.js loads before portal.js", () => {
+  const html = read("src/app/features/portal/index.html");
+  const telefono = html.indexOf("/app/features/portal/portal.telefono.js");
+  assert.notEqual(telefono, -1);
+  assert.ok(telefono < html.indexOf("/app/features/portal/portal.js"));
+});
+
+test("a card only saves its own fields: an old invalid phone never blocks saving the name", () => {
+  const guardado = { nombre: "Ana", apellidos: "Ruiz", telefono: "55 1234" };
+  const cambios = cambiosDeTarjeta(guardado, { nombre: "Ana María", apellidos: "Ruiz" });
+  assert.deepEqual(cambios, { nombre: "Ana María" });
+  assert.deepEqual(validarCambios(cambios), { ok: true });
+});
+
+test("a card with nothing changed has nothing to save", () => {
+  const guardado = { nombre: "Ana", apellidos: "Ruiz", telefono: null };
+  assert.deepEqual(cambiosDeTarjeta(guardado, { telefono: "" }), {});
+  assert.deepEqual(cambiosDeTarjeta(guardado, { nombre: " Ana ", apellidos: "Ruiz" }), {});
+});
+
+test("the phone card saves only the phone", () => {
+  const guardado = { nombre: "Ana", apellidos: "", telefono: "" };
+  assert.deepEqual(cambiosDeTarjeta(guardado, { telefono: "+525512345678" }), { telefono: "+525512345678" });
+});
+
+test("touching the switch saves the opposite value and shows what the database kept", async () => {
+  const llamadas = [];
+  const resultado = await alternarPreferenciaCorreo({ avisosCursoNuevo: false }, async (cambios) => {
+    llamadas.push(cambios);
+    return { ok: true, data: { avisos_curso_nuevo: true } };
+  });
+  assert.deepEqual(llamadas, [{ avisos_curso_nuevo: true }]);
+  assert.deepEqual(resultado, { ok: true, preferencias: { avisosCursoNuevo: true } });
+});
+
+test("when saving the switch fails it goes back to how it was and carries the error (S17)", async () => {
+  const resultado = await alternarPreferenciaCorreo({ avisosCursoNuevo: true }, async () => ({
+    ok: false,
+    mensaje: "No se pudieron guardar los cambios.",
+  }));
+  assert.deepEqual(resultado, {
+    ok: false,
+    preferencias: { avisosCursoNuevo: true },
+    mensaje: "No se pudieron guardar los cambios.",
+  });
+});
+
+test("the switch is on in the «Guardar» blue with a white knob", () => {
+  const css = read("src/app/features/portal/portal.css");
+  const encendido = css.match(/\.portal__switch\[aria-checked="true"\]\s*{([^}]*)}/);
+  assert.ok(encendido, "falta el estado encendido del interruptor");
+  assert.match(encendido[1], /background-color:\s*var\(--cfg-primario\)/);
+  assert.match(css, /--cfg-primario:\s*#1149a5/);
+  const perilla = css.match(/\.portal__switch-perilla\s*{([^}]*)}/);
+  assert.match(perilla[1], /background-color:\s*#fff/);
+  const guardar = css.match(/\.portal__boton-guardar\s*{([^}]*)}/);
+  assert.match(guardar[1], /background-color:\s*var\(--cfg-primario\)/);
+});
+
+test("portal.js keeps the «Preferencia guardada.» toast and saves the switch on click", () => {
+  const js = read("src/app/features/portal/portal.js");
+  assert.match(js, /mostrarToast\("Preferencia guardada\.", "success"\)/);
+  assert.match(js, /alternarPreferenciaCorreo\(/);
+  assert.match(js, /setAttribute\("aria-checked"/);
+});
+
+test("when saving the switch throws (no connection) it also goes back to how it was", async () => {
+  const resultado = await alternarPreferenciaCorreo({ avisosCursoNuevo: false }, async () => {
+    throw new TypeError("Failed to fetch");
+  });
+  assert.deepEqual(resultado, {
+    ok: false,
+    preferencias: { avisosCursoNuevo: false },
+    mensaje: "No se pudieron guardar los cambios.",
+  });
+});
+
+test("the phone number field takes its width from the card, not its own, so 390 px does not scroll sideways", () => {
+  // Medido en Chrome a 390 px: con el ancho propio del input, la columna de la
+  // sección crecía a 381 px dentro de 358 y la página scrolleaba 7 px.
+  const css = read("src/app/features/portal/portal.css");
+  const numero = css.match(/\.portal__telefono-numero\s*{([^}]*)}/);
+  assert.match(numero[1], /flex:\s*1/);
+  assert.match(numero[1], /(?<!-)inline-size:\s*0/);
 });

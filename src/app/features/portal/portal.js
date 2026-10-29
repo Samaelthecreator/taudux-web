@@ -122,10 +122,10 @@
 
   // El campo culpable de un error recibe aria-describedby + aria-invalid; el
   // resto de los inputs del form los pierde en cada intento nuevo.
-  function marcarCampoInvalido(form, nombreCampo) {
+  function marcarCampoInvalido(form, nombreCampo, idEstado) {
     form.querySelectorAll("input").forEach((input) => {
       if (input.name === nombreCampo) {
-        input.setAttribute("aria-describedby", "perfilStatus");
+        input.setAttribute("aria-describedby", idEstado);
         input.setAttribute("aria-invalid", "true");
       } else {
         input.removeAttribute("aria-describedby");
@@ -144,7 +144,7 @@
   function mostrarErrorPerfil(form, estado, { campo, mensaje }) {
     estado.textContent = mensaje;
     estado.hidden = false;
-    if (campo) marcarCampoInvalido(form, campo);
+    if (campo) marcarCampoInvalido(form, campo, estado.id);
     estado.focus();
   }
 
@@ -155,65 +155,207 @@
     limpiarCamposInvalidos(form);
   }
 
-  function leerFormularioPerfil(form) {
+  /*
+    Selector de país del teléfono (S15, L56). La lista sale de
+    portal.telefono.js y las banderas se sirven desde el sitio. Con la
+    búsqueda vacía, México y Estados Unidos van primero, separados del resto.
+  */
+  const CARPETA_BANDERAS = "/assets/vendor/flag-icons-7.2.3/";
+
+  function crearBandera(iso) {
+    const imagen = document.createElement("img");
+    imagen.className = "portal__bandera";
+    imagen.alt = "";
+    imagen.width = 20;
+    imagen.height = 15;
+    imagen.loading = "lazy";
+    imagen.src = `${CARPETA_BANDERAS}${iso}.svg`;
+    imagen.addEventListener("error", () => {
+      const texto = document.createElement("span");
+      texto.className = "portal__bandera-texto";
+      texto.textContent = iso.toUpperCase();
+      imagen.replaceWith(texto);
+    });
+    return imagen;
+  }
+
+  function configurarSelectorPais(form) {
+    const boton = document.getElementById("botonPais");
+    const popover = document.getElementById("popoverPaises");
+    const lista = document.getElementById("listaPaises");
+    const busqueda = document.getElementById("buscarPais");
+    const numero = form.elements.telefono;
+    let actual = paisTelefono();
+
+    function pintarSeleccion() {
+      document.getElementById("banderaPais").replaceChildren(crearBandera(actual.iso));
+      document.getElementById("ladaPais").textContent = `+${actual.lada}`;
+      boton.setAttribute("aria-label", `País: ${actual.nombre} +${actual.lada}`);
+      numero.placeholder = EJEMPLO_TELEFONO_POR_PAIS[actual.iso] || "Número de teléfono";
+    }
+
+    function opcion(pais) {
+      const item = document.createElement("li");
+      const opcionBoton = document.createElement("button");
+      opcionBoton.type = "button";
+      opcionBoton.className = "portal__pais-opcion";
+      opcionBoton.setAttribute("role", "option");
+      opcionBoton.setAttribute("aria-selected", String(pais.iso === actual.iso));
+      const nombre = document.createElement("span");
+      nombre.textContent = pais.nombre;
+      const lada = document.createElement("span");
+      lada.className = "portal__pais-lada";
+      lada.textContent = `+${pais.lada}`;
+      opcionBoton.append(crearBandera(pais.iso), nombre, lada);
+      opcionBoton.addEventListener("click", () => {
+        actual = pais;
+        pintarSeleccion();
+        cerrar();
+        numero.focus();
+      });
+      item.appendChild(opcionBoton);
+      return item;
+    }
+
+    function pintarLista() {
+      const consulta = busqueda.value.trim();
+      const paises = filtrarPaises(consulta);
+      lista.replaceChildren();
+      if (!consulta) {
+        PAISES_DESTACADOS.forEach((iso) => lista.appendChild(opcion(paisTelefono(iso))));
+        const separador = document.createElement("li");
+        separador.className = "portal__paises-separador";
+        separador.setAttribute("role", "presentation");
+        lista.appendChild(separador);
+      }
+      paises
+        .filter((pais) => consulta || !PAISES_DESTACADOS.includes(pais.iso))
+        .forEach((pais) => lista.appendChild(opcion(pais)));
+      if (consulta && paises.length === 0) {
+        const vacio = document.createElement("li");
+        vacio.className = "portal__paises-vacio";
+        vacio.textContent = "Sin resultados";
+        lista.appendChild(vacio);
+      }
+    }
+
+    function abrir() {
+      busqueda.value = "";
+      pintarLista();
+      popover.hidden = false;
+      boton.setAttribute("aria-expanded", "true");
+      busqueda.focus();
+      const elegido = lista.querySelector('[aria-selected="true"]');
+      if (elegido) elegido.scrollIntoView({ block: "nearest" });
+    }
+
+    function cerrar() {
+      popover.hidden = true;
+      boton.setAttribute("aria-expanded", "false");
+    }
+
+    boton.addEventListener("click", () => (popover.hidden ? abrir() : cerrar()));
+    busqueda.addEventListener("input", pintarLista);
+    document.addEventListener("click", (evento) => {
+      if (!popover.hidden && !popover.contains(evento.target) && !boton.contains(evento.target)) cerrar();
+    });
+    // El Esc cierra la lista y no llega al panel: en la capa cerraría todo.
+    popover.addEventListener("keydown", (evento) => {
+      const opciones = Array.from(lista.querySelectorAll(".portal__pais-opcion"));
+      const indice = opciones.indexOf(document.activeElement);
+      if (evento.key === "Escape") {
+        evento.preventDefault();
+        cerrar();
+        boton.focus();
+      } else if (evento.key === "ArrowDown") {
+        evento.preventDefault();
+        (opciones[indice + 1] || opciones[0]).focus();
+      } else if (evento.key === "ArrowUp") {
+        evento.preventDefault();
+        if (indice > 0) opciones[indice - 1].focus();
+        else busqueda.focus();
+      }
+    });
+    numero.addEventListener("input", () => {
+      numero.value = numero.value.replace(/[^\d\s()+-]/g, "");
+    });
+
+    pintarSeleccion();
     return {
-      nombre: form.elements.nombre.value,
-      apellidos: form.elements.apellidos.value,
-      telefono: form.elements.telefono.value,
+      pais: () => actual.iso,
+      elegir(iso) {
+        actual = paisTelefono(iso);
+        pintarSeleccion();
+      },
     };
   }
 
-  function poblarFormularioPerfil(form, perfil) {
-    const datos = normalizarPerfil(perfil || {});
-    form.elements.nombre.value = datos.nombre;
-    form.elements.apellidos.value = datos.apellidos;
-    form.elements.telefono.value = datos.telefono;
-    return datos;
-  }
-
+  /*
+    «Editar perfil» en dos tarjetas (T8, S15): cada una guarda sólo sus campos
+    (cambiosDeTarjeta), contra el mismo perfil guardado, que se actualiza con
+    lo que devuelve la BD después de cada guardado.
+  */
   function configurarFormularioPerfil(session, perfilInicial) {
-    const form = document.getElementById("formPerfil");
-    const estado = document.getElementById("perfilStatus");
-    if (!form || !estado) return;
+    const formNombre = document.getElementById("formNombre");
+    const formTelefono = document.getElementById("formTelefono");
+    if (!formNombre || !formTelefono) return;
 
-    let original = poblarFormularioPerfil(form, perfilInicial);
+    const selectorPais = configurarSelectorPais(formTelefono);
+    let guardado = normalizarPerfil(perfilInicial || {});
 
-    form.addEventListener("submit", async (evento) => {
-      evento.preventDefault();
+    function poblar() {
+      formNombre.elements.nombre.value = guardado.nombre;
+      formNombre.elements.apellidos.value = guardado.apellidos;
+      const { iso, nacional } = separarTelefono(guardado.telefono);
+      selectorPais.elegir(iso);
+      formTelefono.elements.telefono.value = nacional;
+    }
 
-      const actual = normalizarPerfil(leerFormularioPerfil(form));
-      const cambios = camposModificados(original, actual);
-      if (Object.keys(cambios).length === 0) {
-        ocultarErrorPerfil(form, estado);
-        return;
-      }
+    function configurarTarjeta(form, estado, leer) {
+      form.addEventListener("submit", async (evento) => {
+        evento.preventDefault();
 
-      // Solo se valida lo que realmente va a cambiar: un dato legacy inválido
-      // en un campo que el usuario no tocó no debe bloquear guardar otro.
-      const validacion = validarCambios(cambios);
-      if (!validacion.ok) {
-        mostrarErrorPerfil(form, estado, validacion);
-        return;
-      }
-
-      establecerFormularioOcupado(form, true);
-      try {
-        const resultado = await actualizarPerfil(session.user.id, cambios);
-        if (!resultado.ok) {
-          mostrarErrorPerfil(form, estado, { mensaje: resultado.mensaje });
+        const cambios = cambiosDeTarjeta(guardado, leer());
+        if (Object.keys(cambios).length === 0) {
+          ocultarErrorPerfil(form, estado);
           return;
         }
-        original = poblarFormularioPerfil(form, resultado.data);
-        ocultarErrorPerfil(form, estado);
-        mostrarToast("Cambios guardados.", "success");
-        // La barra de arriba muestra el nombre y no se vuelve a cargar.
-        if (embebido && cambios.nombre !== undefined) {
-          avisarALaCapa({ tipo: MENSAJES_CAPA_CONFIGURACION.nombre, nombre: original.nombre });
+
+        const validacion = validarCambios(cambios);
+        if (!validacion.ok) {
+          mostrarErrorPerfil(form, estado, validacion);
+          return;
         }
-      } finally {
-        establecerFormularioOcupado(form, false);
-      }
-    });
+
+        establecerFormularioOcupado(form, true);
+        try {
+          const resultado = await actualizarPerfil(session.user.id, cambios);
+          if (!resultado.ok) {
+            mostrarErrorPerfil(form, estado, { mensaje: resultado.mensaje });
+            return;
+          }
+          guardado = normalizarPerfil(resultado.data);
+          poblar();
+          ocultarErrorPerfil(form, estado);
+          mostrarToast("Cambios guardados.", "success");
+          // La barra de arriba muestra el nombre y no se vuelve a cargar.
+          if (embebido && cambios.nombre !== undefined) {
+            avisarALaCapa({ tipo: MENSAJES_CAPA_CONFIGURACION.nombre, nombre: guardado.nombre });
+          }
+        } finally {
+          establecerFormularioOcupado(form, false);
+        }
+      });
+    }
+
+    poblar();
+    configurarTarjeta(formNombre, document.getElementById("nombreStatus"), () => ({
+      nombre: formNombre.elements.nombre.value,
+      apellidos: formNombre.elements.apellidos.value,
+    }));
+    configurarTarjeta(formTelefono, document.getElementById("telefonoStatus"), () => ({
+      telefono: unirTelefono(selectorPais.pais(), formTelefono.elements.telefono.value),
+    }));
   }
 
   // El campo culpable de un error recibe aria-describedby + aria-invalid; el
@@ -672,17 +814,11 @@
   }
 
   // El perfil llega de la BD en snake_case (avisos_curso_nuevo); el núcleo
-  // puro trabaja en camelCase, igual que el name del checkbox del form.
-  function poblarFormularioCorreo(form, perfil) {
-    const datos = normalizarPreferenciasCorreo({
+  // puro trabaja en camelCase.
+  function preferenciasDelPerfil(perfil) {
+    return normalizarPreferenciasCorreo({
       avisosCursoNuevo: perfil && perfil.avisos_curso_nuevo,
     });
-    form.elements.avisosCursoNuevo.checked = datos.avisosCursoNuevo;
-    return datos;
-  }
-
-  function leerFormularioCorreo(form) {
-    return { avisosCursoNuevo: form.elements.avisosCursoNuevo.checked };
   }
 
   function mostrarErrorCorreo(estado, mensaje) {
@@ -697,35 +833,46 @@
     estado.textContent = "";
   }
 
+  /*
+    Interruptor del aviso de curso nuevo (S17): se guarda al tocarlo, sin
+    «Guardar». Cambia en cuanto se toca y, si falla, regresa a como estaba y
+    avisa en correoStatus. Mientras guarda no se deshabilita (perdería el
+    foco del teclado): un toque de más simplemente se ignora.
+  */
   function configurarFormularioCorreo(session, perfilInicial) {
     const form = document.getElementById("formCorreo");
     const estado = document.getElementById("correoStatus");
-    if (!form || !estado) return;
+    const interruptor = document.getElementById("correoCursoNuevo");
+    if (!form || !estado || !interruptor) return;
 
-    let original = poblarFormularioCorreo(form, perfilInicial);
+    let guardado = preferenciasDelPerfil(perfilInicial);
+    let guardando = false;
 
-    form.addEventListener("submit", async (evento) => {
-      evento.preventDefault();
+    function pintar(preferencias) {
+      interruptor.setAttribute("aria-checked", String(preferencias.avisosCursoNuevo));
+    }
 
-      const actual = leerFormularioCorreo(form);
-      const cambios = cambiosPreferenciasCorreo(original, actual);
-      if (Object.keys(cambios).length === 0) {
-        ocultarErrorCorreo(estado);
-        return;
-      }
-
-      establecerFormularioOcupado(form, true);
+    pintar(guardado);
+    interruptor.addEventListener("click", async () => {
+      if (guardando) return;
+      guardando = true;
+      form.setAttribute("aria-busy", "true");
+      pintar({ avisosCursoNuevo: !guardado.avisosCursoNuevo });
       try {
-        const resultado = await actualizarPerfil(session.user.id, cambios);
+        const resultado = await alternarPreferenciaCorreo(guardado, (cambios) =>
+          actualizarPerfil(session.user.id, cambios),
+        );
+        guardado = resultado.preferencias;
+        pintar(guardado);
         if (!resultado.ok) {
           mostrarErrorCorreo(estado, resultado.mensaje);
           return;
         }
-        original = poblarFormularioCorreo(form, resultado.data);
         ocultarErrorCorreo(estado);
         mostrarToast("Preferencia guardada.", "success");
       } finally {
-        establecerFormularioOcupado(form, false);
+        guardando = false;
+        form.setAttribute("aria-busy", "false");
       }
     });
   }
