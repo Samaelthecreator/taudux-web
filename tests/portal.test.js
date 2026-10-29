@@ -426,7 +426,9 @@ test("a deleted account is signed out locally and sent home", () => {
     contra el servidor fallaría; solo queda limpiar la sesión de este navegador.
   */
   assert.match(cuerpo, /cerrarSesion\(\{\s*scope:\s*"local"\s*\}\)/);
-  assert.match(cuerpo, /window\.location\.href\s*=\s*"\/"/);
+  // ventanaQueNavega(): en la capa «Configuración» el inicio se abre arriba,
+  // no dentro del iframe (T7b).
+  assert.match(cuerpo, /ventanaQueNavega\(\)\.location\.href\s*=\s*"\/"/);
 });
 
 test("eliminarCuenta never sends a user id: the edge function reads it from the JWT", () => {

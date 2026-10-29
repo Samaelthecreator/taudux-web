@@ -623,4 +623,78 @@
       menú de cuenta en todos los tamaños, así que su grupo ya no se oculta.
     */
   }
+
+  /*
+    La capa «Configuración» (S14): el portal en un iframe encima de la página.
+    En escritorio, un panel centrado sobre un fondo con blur; en ≤760px ocupa
+    toda la pantalla y el blur se apaga (no se vería y en móvil es caro).
+    Va por encima del navbar y de los desplegables, por debajo de los toasts.
+    Los colores repiten --cfg-fondo, --cfg-borde y --cfg-texto-2: esos tokens
+    viven en .portal (portal.css), que en esta página no existe.
+  */
+  .capa-config-abierta,
+  .capa-config-abierta body {
+    overflow: hidden;
+  }
+
+  /* El portal dentro de la capa: la barra de arriba ya está (portal.js). */
+  .portal--embebido .navbar {
+    display: none;
+  }
+
+  .capa-config {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-dropdown) + 50);
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    background-color: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+  }
+
+  .capa-config__caja {
+    position: relative;
+    inline-size: min(100%, var(--ancho-medio));
+    block-size: min(100%, 52rem);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: #141414;
+  }
+
+  .capa-config__cargando {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    color: #a3a3a3;
+  }
+  /* Invisible hasta su load: así no se ve el portal a medio pintar. */
+  .capa-config__panel {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    border: 0;
+    visibility: hidden;
+  }
+
+  .capa-config__caja--lista .capa-config__panel {
+    visibility: visible;
+  }
+
+  @media (max-width: 760px) {
+    .capa-config {
+      padding: 0;
+      backdrop-filter: none;
+    }
+
+    .capa-config__caja {
+      inline-size: 100%;
+      block-size: 100%;
+      border: 0;
+      border-radius: 0;
+    }
+  }
 }

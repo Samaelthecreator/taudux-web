@@ -122,6 +122,40 @@ function urlLoginConDestino(destino) {
   return `${RUTAS_AUTH.login}?next=${encodeURIComponent(ruta)}`;
 }
 
+/*
+  La capa «Configuración» (S14, L39): «Mi cuenta» abre el portal encima de la
+  página actual, dentro de un <iframe> con ?embebido=1. Hacen falta las dos
+  condiciones: el parámetro solo, con la URL copiada en una pestaña, es el
+  portal como página; y otro iframe del sitio (los slides) no es la capa.
+
+  Viven acá porque los usan las dos ventanas: el navbar (la de arriba, que
+  recibe los mensajes) y el portal (la de adentro, que los manda).
+*/
+const MENSAJES_CAPA_CONFIGURACION = Object.freeze({
+  cerrar: "taudux:cerrar-configuracion",
+  nombre: "taudux:nombre-actualizado",
+});
+
+function enCapaDeConfiguracion() {
+  try {
+    return (
+      window.top !== window &&
+      new URLSearchParams(window.location.search).get("embebido") === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/*
+  Dentro de la capa, ir a otra página es cosa de la ventana de arriba: el
+  login y Google no se dejan enmarcar (`frame-ancestors 'none'`), y el
+  inicio dentro del iframe sería un sitio dentro del sitio.
+*/
+function ventanaQueNavega() {
+  return enCapaDeConfiguracion() ? window.top : window;
+}
+
 // Registrar un usuario. Con Confirm Email activo, data.session debe ser null.
 async function registrarUsuario(email, password, nombre, apellidos, telefono) {
   const { data, error } = await supabaseClient.auth.signUp({
@@ -199,18 +233,26 @@ async function iniciarSesionConGoogle() {
   portal.reauth.js), así que puede canjear el ?code= él mismo sin pasar por
   esa página intermedia — que además está hardcodeada a aterrizar siempre en
   home (ver oauth-callback.js) y no sirve para retomar un flujo del portal.
+
+  En la capa, Google no se deja enmarcar: con skipBrowserRedirect se pide la
+  URL y se navega la ventana de arriba. El code_verifier y la marca de reauth
+  siguen a salvo: el iframe es del mismo origen y comparte el storage de la
+  pestaña. El regreso aterriza en el portal como página.
 */
 async function reautenticarConGoogle() {
-  const { error } = await supabaseClient.auth.signInWithOAuth({
+  const embebido = enCapaDeConfiguracion();
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: urlAbsolutaAuth(RUTAS_AUTH.portal),
       queryParams: { prompt: "select_account" },
+      ...(embebido ? { skipBrowserRedirect: true } : {}),
     },
   });
   if (error) {
     return { ok: false, codigo: error.code, mensaje: traducirErrorAuth(error) };
   }
+  if (embebido) window.top.location.assign(data.url);
   return { ok: true };
 }
 
@@ -392,11 +434,17 @@ async function obtenerSesion() {
   return data.session;
 }
 
+/*
+  En la capa, el destino de vuelta es la página de abajo y no el portal
+  (L49): volver a /app/features/portal/?embebido=1 como página lo mostraría
+  roto.
+*/
 async function requerirSesion() {
   const session = await obtenerSesion();
   if (!session) {
-    const destino = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    window.location.href = urlLoginConDestino(destino);
+    const ventana = ventanaQueNavega();
+    const { pathname, search, hash } = ventana.location;
+    ventana.location.href = urlLoginConDestino(`${pathname}${search}${hash}`);
     return null;
   }
   return session;

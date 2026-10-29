@@ -34,6 +34,33 @@
   padding-inline: 2rem;
 }
 
+/*
+  Dentro de la capa «Configuración» (iframe con ?embebido=1, ver
+  navbar.css): sólo el panel, llenando el iframe. La caja de la capa ya pone
+  el borde y las esquinas, y navbar.css oculta la barra del sitio.
+*/
+.portal--embebido,
+.portal--embebido body {
+  background-color: #141414;
+}
+
+.portal--embebido .portal {
+  padding-block: 0;
+  background-color: transparent;
+}
+
+.portal--embebido .portal__container {
+  max-inline-size: none;
+  padding-inline: 0;
+}
+
+.portal--embebido .portal__panel {
+  margin-block-start: 0;
+  min-block-size: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
 .portal__panel {
   margin-block-start: 2rem;
   border: 1px solid var(--cfg-borde);

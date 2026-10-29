@@ -16,6 +16,19 @@
   const accionesStartup = document.getElementById("portalStartupActions");
   const contenido = document.getElementById("portalContent");
 
+  /*
+    Dentro de la capa «Configuración» (S14, L39) el portal es sólo el panel:
+    sin la barra del sitio (la de arriba ya está; la oculta navbar.css) y sin
+    márgenes de página (portal.css). La clase se pone antes del load del iframe, y la capa no
+    muestra el iframe hasta ese load, así que la barra nunca llega a verse.
+  */
+  const embebido = enCapaDeConfiguracion();
+  if (embebido) document.documentElement.classList.add("portal--embebido");
+
+  function avisarALaCapa(mensaje) {
+    window.top.postMessage(mensaje, window.location.origin);
+  }
+
   function enlaces() {
     return Array.from(document.querySelectorAll(".portal__nav-link"));
   }
@@ -70,11 +83,40 @@
     });
   }
 
+  // En la capa, la ✕ no navega: le pide a la ventana de arriba que la cierre.
   function configurarCierrePanel() {
     const boton = document.getElementById("botonCerrarPortal");
     if (!boton) return;
     boton.addEventListener("click", () => {
+      if (embebido) {
+        avisarALaCapa({ tipo: MENSAJES_CAPA_CONFIGURACION.cerrar });
+        return;
+      }
       window.location.assign(destinoAlCerrar(document.referrer, window.location.origin));
+    });
+  }
+
+  /*
+    Con el foco dentro del iframe, el Esc no llega a la ventana de arriba: se
+    reenvía como mensaje. Con un diálogo abierto (confirmar, eliminar cuenta)
+    Esc cierra primero el diálogo, como en cualquier página.
+
+    Los enlaces a otra página se abren arriba (enlaceSaleDelPanel): se decide
+    al final del clic, después de que la navegación interna del panel haya
+    hecho su preventDefault con los suyos.
+  */
+  function configurarModoEmbebido() {
+    if (!embebido) return;
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key !== "Escape" || evento.defaultPrevented) return;
+      if (document.querySelector("dialog[open]")) return;
+      avisarALaCapa({ tipo: MENSAJES_CAPA_CONFIGURACION.cerrar });
+    });
+    document.addEventListener("click", (evento) => {
+      if (evento.defaultPrevented) return;
+      const enlace = evento.target.closest && evento.target.closest("a[href]");
+      if (!enlace || enlace.target) return;
+      if (enlaceSaleDelPanel(enlace.href, window.location.href)) enlace.target = "_top";
     });
   }
 
@@ -164,6 +206,10 @@
         original = poblarFormularioPerfil(form, resultado.data);
         ocultarErrorPerfil(form, estado);
         mostrarToast("Cambios guardados.", "success");
+        // La barra de arriba muestra el nombre y no se vuelve a cargar.
+        if (embebido && cambios.nombre !== undefined) {
+          avisarALaCapa({ tipo: MENSAJES_CAPA_CONFIGURACION.nombre, nombre: original.nombre });
+        }
       } finally {
         establecerFormularioOcupado(form, false);
       }
@@ -352,7 +398,7 @@
 
     boton.addEventListener("click", async () => {
       await salirDeEstaSesion();
-      window.location.href = "/";
+      ventanaQueNavega().location.href = "/";
     });
   }
 
@@ -478,7 +524,7 @@
         // La cuenta ya no existe: el signOut solo limpia la sesión local, y si
         // fallara igual hay que sacar al usuario de un portal sin dueño.
         await cerrarSesion({ scope: "local" });
-        window.location.href = "/";
+        ventanaQueNavega().location.href = "/";
       } finally {
         establecerFormularioOcupado(form, false);
       }
@@ -622,7 +668,7 @@
     // La cuenta ya no existe: el signOut solo limpia la sesión local, y si
     // fallara igual hay que sacar al usuario de un portal sin dueño.
     await cerrarSesion({ scope: "local" });
-    window.location.href = "/";
+    ventanaQueNavega().location.href = "/";
   }
 
   // El perfil llega de la BD en snake_case (avisos_curso_nuevo); el núcleo
@@ -824,5 +870,6 @@
 
   configurarReintentoReauth();
   configurarCierrePanel();
+  configurarModoEmbebido();
   inicializarPortal();
 })();

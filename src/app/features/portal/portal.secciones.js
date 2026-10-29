@@ -74,6 +74,28 @@ function destinoAlCerrar(referrer, origen) {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+/*
+  En la capa «Configuración» (iframe con ?embebido=1), un enlace que lleva a
+  otra página tiene que abrirse arriba: adentro del iframe quedaría un sitio
+  dentro del sitio, y el login ni siquiera se deja enmarcar. Sólo un cambio
+  de hash se queda en el panel.
+*/
+function enlaceSaleDelPanel(href, actual) {
+  let destino;
+  let aqui;
+  try {
+    aqui = new URL(actual);
+    destino = new URL(href, aqui);
+  } catch {
+    return false;
+  }
+  return (
+    destino.origin !== aqui.origin ||
+    destino.pathname !== aqui.pathname ||
+    destino.search !== aqui.search
+  );
+}
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     SECCIONES_PORTAL,
@@ -81,5 +103,6 @@ if (typeof module === "object" && module.exports) {
     seccionDelMenu,
     hashDeEnlaceInterno,
     destinoAlCerrar,
+    enlaceSaleDelPanel,
   });
 }

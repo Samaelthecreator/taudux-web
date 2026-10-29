@@ -38,6 +38,9 @@ const ENLACES_NAVEGACION_BASE = [
     href: "/app/features/portal/",
     habilitado: true,
     soloSesion: true,
+    // Un clic simple abre la capa «Configuración» (S14); el href queda para
+    // Ctrl+clic y «abrir en otra pestaña».
+    alHacerClick: abrirCapaDesdeMenu,
   },
   {
     texto: "Academy",
@@ -123,6 +126,165 @@ async function salirYVolver(evento) {
   }
   window.location.href = "/";
 }
+
+/*
+  La capa «Configuración» (S14, L39, L44, L49): el portal encima de la página
+  actual, en un <iframe> con ?embebido=1. Lo demás es del portal, que avisa
+  por postMessage cuándo cerrar y qué nombre poner en la barra.
+
+  - Cada apertura crea un iframe nuevo y al cerrar se destruye (L49): datos
+    frescos, siempre en #perfil.
+  - Al abrir se agrega una entrada al historial sin cambiar la URL, y
+    «Atrás» cierra la capa (L44). Moverse dentro del panel no suma entradas:
+    el portal usa location.replace.
+  - Mientras está abierta, lo de abajo queda `inert`: el foco no se escapa
+    del panel con Tab.
+  - El history.back() del cierre es asíncrono: si se reabre antes de que
+    llegue su popstate, la apertura espera a ese popstate; si no, el
+    retroceso consumiría la entrada nueva y cerraría la capa recién abierta.
+  - Al volver con «Atrás» desde otra página (bfcache), la capa se quita y se
+    consume su entrada: si no, se vería abierta y cargando.
+*/
+// Literal y no `${RUTAS_AUTH.portal}…`: navbar.js se evalúa también sin
+// auth.service.js (tests/navbar-jerarquia.test.js), y RUTAS_AUTH sólo se
+// puede leer al llamar, no al cargar.
+const URL_CAPA_CONFIGURACION = "/app/features/portal/?embebido=1#perfil";
+
+const capaConfiguracion = { raiz: null, iframe: null, origen: null, inertes: [], retrocesoPendiente: false, aperturaPendiente: null };
+
+function debeAbrirCapaConfiguracion(evento, rutaActual) {
+  if (evento.defaultPrevented || evento.button !== 0) return false;
+  if (evento.ctrlKey || evento.metaKey || evento.shiftKey || evento.altKey) return false;
+  // En el propio portal «Mi cuenta» navega normal: abrir el portal sobre sí
+  // mismo sería un panel dentro del panel.
+  return !`${rutaActual}/`.startsWith(RUTAS_AUTH.portal);
+}
+
+// Sólo del mismo origen, del iframe de la capa y de un tipo conocido.
+function tipoDeMensajeDeCapa(evento, origen, ventanaDelPanel) {
+  if (evento.origin !== origen || !ventanaDelPanel || evento.source !== ventanaDelPanel) return null;
+  const tipo = evento.data && typeof evento.data === "object" ? evento.data.tipo : null;
+  return Object.values(MENSAJES_CAPA_CONFIGURACION).includes(tipo) ? tipo : null;
+}
+
+function actualizarNombreEnMenu(nombre) {
+  if (typeof nombre !== "string" || !nombre.trim()) return;
+  const toggle = document.querySelector(".nav-menu__toggle--account");
+  if (!toggle) return;
+  toggle.setAttribute("aria-label", `Cuenta: ${nombre}`);
+  const visible = toggle.querySelector(".nav-menu__nombre");
+  if (visible) visible.textContent = nombre;
+}
+
+function alMensajeDeCapa(evento) {
+  const tipo = tipoDeMensajeDeCapa(evento, window.location.origin, capaConfiguracion.iframe?.contentWindow);
+  if (tipo === MENSAJES_CAPA_CONFIGURACION.cerrar) cerrarCapaConfiguracion();
+  if (tipo === MENSAJES_CAPA_CONFIGURACION.nombre) actualizarNombreEnMenu(evento.data.nombre);
+}
+
+function alVolverConCapa() {
+  cerrarCapaConfiguracion({ desdeHistorial: true });
+}
+
+function alTeclaConCapa(evento) {
+  if (evento.key === "Escape") cerrarCapaConfiguracion();
+}
+
+function alResolverRetrocesoDeCapa() {
+  window.removeEventListener("popstate", alResolverRetrocesoDeCapa);
+  capaConfiguracion.retrocesoPendiente = false;
+  const pendiente = capaConfiguracion.aperturaPendiente;
+  capaConfiguracion.aperturaPendiente = null;
+  if (pendiente) abrirCapaConfiguracion(pendiente.origen);
+}
+
+function abrirCapaConfiguracion(origen) {
+  if (capaConfiguracion.raiz) return;
+  if (capaConfiguracion.retrocesoPendiente) {
+    capaConfiguracion.aperturaPendiente = { origen };
+    return;
+  }
+
+  const raiz = document.createElement("div");
+  raiz.className = "capa-config";
+  // Clic en el fondo, no en el panel: el iframe se traga los clics de adentro.
+  raiz.addEventListener("click", (evento) => {
+    if (evento.target === raiz) cerrarCapaConfiguracion();
+  });
+
+  const caja = document.createElement("div");
+  caja.className = "capa-config__caja";
+  caja.setAttribute("role", "dialog");
+  caja.setAttribute("aria-modal", "true");
+  caja.setAttribute("aria-label", "Configuración");
+
+  const cargando = document.createElement("p");
+  cargando.className = "capa-config__cargando";
+  cargando.textContent = "Cargando Configuración…";
+
+  const iframe = document.createElement("iframe");
+  iframe.className = "capa-config__panel";
+  iframe.title = "Configuración";
+  iframe.src = URL_CAPA_CONFIGURACION;
+  iframe.addEventListener("load", () => {
+    cargando.hidden = true;
+    caja.classList.add("capa-config__caja--lista");
+    iframe.focus();
+  });
+
+  caja.append(cargando, iframe);
+  raiz.appendChild(caja);
+
+  capaConfiguracion.inertes = Array.from(document.body.children).filter((hijo) => !hijo.inert);
+  capaConfiguracion.inertes.forEach((hijo) => { hijo.inert = true; });
+  document.body.appendChild(raiz);
+  document.documentElement.classList.add("capa-config-abierta");
+
+  capaConfiguracion.raiz = raiz;
+  capaConfiguracion.iframe = iframe;
+  capaConfiguracion.origen = origen || null;
+
+  history.pushState({ capaConfiguracion: true }, "");
+  window.addEventListener("popstate", alVolverConCapa);
+  window.addEventListener("message", alMensajeDeCapa);
+  document.addEventListener("keydown", alTeclaConCapa);
+}
+
+function cerrarCapaConfiguracion({ desdeHistorial = false } = {}) {
+  const { raiz, origen, inertes } = capaConfiguracion;
+  if (!raiz) return;
+
+  window.removeEventListener("popstate", alVolverConCapa);
+  window.removeEventListener("message", alMensajeDeCapa);
+  document.removeEventListener("keydown", alTeclaConCapa);
+
+  raiz.remove();
+  inertes.forEach((hijo) => { hijo.inert = false; });
+  document.documentElement.classList.remove("capa-config-abierta");
+  Object.assign(capaConfiguracion, { raiz: null, iframe: null, origen: null, inertes: [] });
+
+  // La entrada que agregó la capa se consume; con «Atrás» ya se consumió.
+  if (!desdeHistorial) {
+    capaConfiguracion.retrocesoPendiente = true;
+    window.addEventListener("popstate", alResolverRetrocesoDeCapa);
+    history.back();
+  }
+  if (origen && origen.isConnected !== false) origen.focus();
+}
+
+function abrirCapaDesdeMenu(evento) {
+  if (!debeAbrirCapaConfiguracion(evento, window.location.pathname)) return;
+  evento.preventDefault();
+  /*
+    El foco vuelve al botón de la cuenta y no al enlace: el desplegable se
+    cierra con el clic, y el enlace queda oculto adentro.
+  */
+  abrirCapaConfiguracion(document.querySelector(".nav-menu__toggle--account") || evento.currentTarget);
+}
+
+window.addEventListener("pageshow", (evento) => {
+  if (evento.persisted && capaConfiguracion.raiz) cerrarCapaConfiguracion();
+});
 
 window.addEventListener("taudux:operation-error", () => {
   queueMicrotask(() => {
@@ -450,7 +612,9 @@ document.addEventListener("DOMContentLoaded", () => {
   cachearElementosDeScroll();
   actualizarEstadoVisualNavbar();
   actualizarEnlaceActivo();
-  montarMenus();
+  // Dentro de la capa la barra no se ve (portal.css): la de arriba ya está.
+  // Montarla costaría una consulta del perfil en cada apertura.
+  if (!enCapaDeConfiguracion()) montarMenus();
 });
 
 /* Throttle con requestAnimationFrame: como mucho una actualización por frame,
