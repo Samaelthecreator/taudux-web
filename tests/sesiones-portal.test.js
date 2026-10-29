@@ -72,10 +72,10 @@ function fila(extra = {}) {
 
 /* ---------- Bloque A: estados y plazos (S4) ---------- */
 
-test("S4 rules: 3 min active, 1 h / 24 h without signal, 8 h / 30 days idle, 24 h / 30 days total, 5 min after the tab closes", () => {
+test("S4 rules: 3 min active, 1 h / 24 h without signal, 8 h / 30 days idle, 24 h / no total limit, 5 min after the tab closes", () => {
   assert.equal(REGLAS_SESION.activaMs, 3 * MIN);
   assert.deepEqual(REGLAS_SESION.sinRecordarme, { senalMs: HORA, inactividadMs: 8 * HORA, totalMs: 24 * HORA });
-  assert.deepEqual(REGLAS_SESION.conRecordarme, { senalMs: 24 * HORA, inactividadMs: 30 * DIA, totalMs: 30 * DIA });
+  assert.deepEqual(REGLAS_SESION.conRecordarme, { senalMs: 24 * HORA, inactividadMs: 30 * DIA, totalMs: Infinity });
   assert.equal(REGLAS_SESION.pestanaCerradaMs, 5 * MIN);
 });
 
@@ -106,21 +106,30 @@ test("without «Recordarme» the 24 h total limit wins when it comes first", () 
   assert.equal(vida.causa, "límite");
 });
 
-test("with «Recordarme»: no signal up to 24 h and the 30-day limit (start never after last use, L20)", () => {
+test("with «Recordarme»: no signal up to 24 h and closes only after 30 days idle (L40)", () => {
   const inicio = AHORA - 3 * DIA;
   const uso = AHORA - 5 * HORA;
   const vida = vidaDeSesion(fila({ recordarme: true, iniciada_en: iso(inicio), ultimo_uso: iso(uso) }), AHORA);
   assert.equal(vida.estado, "sin-senal");
   assert.equal(vida.inactivaDesde.getTime(), uso + 24 * HORA);
-  assert.equal(vida.seCerrara.getTime(), inicio + 30 * DIA);
-  assert.equal(vida.causa, "límite");
+  assert.equal(vida.seCerrara.getTime(), uso + 30 * DIA);
+  assert.equal(vida.causa, "inactividad");
 
   const inactiva = vidaDeSesion(fila({ recordarme: true, iniciada_en: iso(inicio), ultimo_uso: iso(AHORA - 2 * DIA) }), AHORA);
   assert.equal(inactiva.estado, "inactiva");
 });
 
+test("with «Recordarme» there is no total limit: in use 31 days after signing in, it stays open (L40)", () => {
+  const uso = AHORA - MIN;
+  const vida = vidaDeSesion(fila({ recordarme: true, iniciada_en: iso(AHORA - 31 * DIA), ultimo_uso: iso(uso) }), AHORA);
+  assert.equal(vida.estado, "activa");
+  assert.equal(vida.seCerrara.getTime(), uso + 30 * DIA);
+  assert.equal(vida.causa, "inactividad");
+  assert.match(textoCierre(vida, AHORA, ZONA), /si no se usa$/);
+});
+
 test("a tie between idleness and the total limit is the limit: using it would not extend it", () => {
-  const vida = vidaDeSesion(fila({ recordarme: true, iniciada_en: iso(AHORA - HORA), ultimo_uso: iso(AHORA - HORA) }), AHORA);
+  const vida = vidaDeSesion(fila({ iniciada_en: iso(AHORA - 20 * HORA), ultimo_uso: iso(AHORA - 4 * HORA) }), AHORA);
   assert.equal(vida.causa, "límite");
   assert.doesNotMatch(textoCierre(vida, AHORA, ZONA), /si no se usa/);
 });
@@ -143,8 +152,8 @@ test("a session with no presence row follows the rules without «Recordarme» (L
 });
 
 test("never idle when the limit closes it first: inactivaDesde is null", () => {
-  const inicio = AHORA - 30 * DIA + 2 * HORA;
-  const vida = vidaDeSesion(fila({ recordarme: true, iniciada_en: iso(inicio), ultimo_uso: iso(AHORA - 5 * HORA) }), AHORA);
+  const inicio = AHORA - 23 * HORA - 30 * MIN;
+  const vida = vidaDeSesion(fila({ iniciada_en: iso(inicio), ultimo_uso: iso(AHORA - 10 * MIN) }), AHORA);
   assert.equal(vida.inactivaDesde, null);
   assert.equal(vida.estado, "sin-senal");
 });
@@ -301,7 +310,7 @@ test("closing text: «si no se usa» only when idleness closes it; a closed tab 
 
 test("the «Recordarme» row states its rule (S1 corrections)", () => {
   assert.equal(textoRecordarme(false), "No · se cierra a las 8 h sin uso");
-  assert.equal(textoRecordarme(true), "Sí · se cierra a los 30 días");
+  assert.equal(textoRecordarme(true), "Sí · se cierra a los 30 días sin uso");
 });
 
 /* ---------- Barra «Vida de esta sesión» ---------- */
@@ -318,8 +327,8 @@ test("the life bar has three stretches and places «Ahora» inside the current o
 });
 
 test("without an idle stretch the bar has two parts and «Ahora» stays within 0..1", () => {
-  const inicio = AHORA - 30 * DIA + 2 * HORA;
-  const vida = vidaDeSesion(fila({ recordarme: true, iniciada_en: iso(inicio), ultimo_uso: iso(AHORA - 5 * HORA) }), AHORA);
+  const inicio = AHORA - 23 * HORA - 30 * MIN;
+  const vida = vidaDeSesion(fila({ iniciada_en: iso(inicio), ultimo_uso: iso(AHORA - 10 * MIN) }), AHORA);
   const barra = tramosVida(vida, AHORA);
   assert.deepEqual(barra.tramos.map((t) => t.clave), ["activa", "sin-senal"]);
   assert.ok(barra.posicionAhora >= 0 && barra.posicionAhora <= 1);
@@ -345,6 +354,13 @@ test("the unknown-device hint depends on whether the account has a password", ()
 const HTML = read("src/app/features/portal/index.html");
 const PORTAL = read("src/app/features/portal/portal.js");
 const CONTROLADOR = read("src/app/features/portal/portal.sesiones.js");
+
+test("the list intro states the S4 rules: with «Recordarme», only 30 days without use (L40)", () => {
+  assert.match(
+    HTML,
+    /Sin «Recordarme», una sesión se cierra tras 8 h sin uso o a las 24 h de haber entrado; con «Recordarme», tras 30 días sin uso\./,
+  );
+});
 
 test("the nucleus and the controller load after sesiones.service.js and confirm-dialog, before portal.js", () => {
   const pos = (ruta) => HTML.indexOf(`src="${ruta}"`);

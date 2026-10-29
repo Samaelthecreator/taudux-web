@@ -17,7 +17,8 @@ const DIA_MS = 24 * HORA_MS;
 const REGLAS_SESION = Object.freeze({
   activaMs: 3 * MINUTO_MS,
   sinRecordarme: Object.freeze({ senalMs: HORA_MS, inactividadMs: 8 * HORA_MS, totalMs: 24 * HORA_MS }),
-  conRecordarme: Object.freeze({ senalMs: 24 * HORA_MS, inactividadMs: 30 * DIA_MS, totalMs: 30 * DIA_MS }),
+  // Con «Recordarme» no hay límite total: mientras se use, nunca se cierra (L40).
+  conRecordarme: Object.freeze({ senalMs: 24 * HORA_MS, inactividadMs: 30 * DIA_MS, totalMs: Infinity }),
   pestanaCerradaMs: 5 * MINUTO_MS,
 });
 
@@ -217,7 +218,7 @@ function textoCierre(vida, ahora, zona) {
 }
 
 function textoRecordarme(recordarme) {
-  return recordarme ? "Sí · se cierra a los 30 días" : "No · se cierra a las 8 h sin uso";
+  return recordarme ? "Sí · se cierra a los 30 días sin uso" : "No · se cierra a las 8 h sin uso";
 }
 
 /*

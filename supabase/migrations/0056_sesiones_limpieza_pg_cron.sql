@@ -3,7 +3,8 @@
 --
 -- Tiempos de S4, sin «Recordarme» / con él:
 --   * sin uso: 8 h / 30 días («último uso» = el mismo de sesiones_listar);
---   * límite total desde el inicio: 24 h / 30 días;
+--   * límite total desde el inicio: 24 h / ninguno (L40: con «Recordarme»,
+--     mientras se use, nunca se cierra);
 --   * pestaña cerrada: 5 min después del aviso de pagehide (sólo sin él).
 -- «La sesión se cierra con el límite que llegue primero»: el motivo es el del
 -- plazo más antiguo. Con el cron cada 5 min el cierre llega hasta 5 min tarde.
@@ -97,7 +98,7 @@ begin
         select x.motivo
           from (values
             (u.uso + case when p.recordarme then interval '30 days' else interval '8 hours' end, 'inactividad'),
-            (u.inicio + case when p.recordarme then interval '30 days' else interval '24 hours' end, 'límite'),
+            (case when p.recordarme is not true then u.inicio + interval '24 hours' end, 'límite'),
             (case when p.recordarme is not true then p.pestana_cerrada_en + interval '5 minutes' end, 'pestaña cerrada')
           ) as x (vence, motivo)
          where x.vence <= now()

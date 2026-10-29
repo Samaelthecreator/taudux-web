@@ -202,10 +202,10 @@ select pg_temp.assert_true(
 --   04 sin «Recordarme», pestaña cerrada hace 2 min → sigue
 --   05 sin «Recordarme», latido hace 7 h 55 min, inicio hace 23 h → sigue
 --   06 con «Recordarme», latido hace 2 días, inicio hace 3 días → sigue
---   07 con «Recordarme», latido hace 31 días, inicio hace 32 → límite (con
---      «Recordarme» ambos plazos son 30 días y el inicio nunca es posterior
---      al último uso: el límite total siempre llega primero)
---   08 con «Recordarme», latido hace 1 min, inicio hace 31 días → límite
+--   07 con «Recordarme», latido hace 31 días, inicio hace 32 → inactividad
+--      (con «Recordarme» no hay límite total, L40)
+--   08 con «Recordarme», latido hace 1 min, inicio hace 31 días → sigue
+--      (mientras se use, nunca se cierra)
 --   09 con «Recordarme» y marca de pestaña vieja → sigue (no cuenta)
 --   10 sin «Recordarme», latido hace 8 h 10 min, inicio hace 24 h 20 min →
 --      límite (llega primero: hace 20 min, la inactividad hace 10)
@@ -263,18 +263,18 @@ insert into public.sesiones_presencia
   ('56000000-0000-4000-8000-000000000017', '56000000-0000-4000-8000-00000000000a', now() - interval '12 hours', now() - interval '9 hours', 'UA-17', now() - interval '1 hour', 'cerrada por ti');
 
 select pg_temp.assert_true(
-  public.sesiones_limpiar() = 11,
-  'la limpieza devuelve cuántas sesiones borró de auth.sessions: 01, 02, 03, 07, 08, 10, 11, 13, 14, 16 y 17'
+  public.sesiones_limpiar() = 10,
+  'la limpieza devuelve cuántas sesiones borró de auth.sessions: 01, 02, 03, 07, 10, 11, 13, 14, 16 y 17'
 );
 
 select pg_temp.assert_true(
-  pg_temp.motivo('01') = 'inactividad' and pg_temp.motivo('16') = 'inactividad',
-  'sin uso: 8 h sin «Recordarme» (01, 16 de B)'
+  pg_temp.motivo('01') = 'inactividad' and pg_temp.motivo('16') = 'inactividad'
+    and pg_temp.motivo('07') = 'inactividad',
+  'sin uso: 8 h sin «Recordarme» (01, 16 de B) y 30 días con él (07)'
 );
 select pg_temp.assert_true(
-  pg_temp.motivo('02') = 'límite' and pg_temp.motivo('08') = 'límite'
-    and pg_temp.motivo('07') = 'límite',
-  'límite total: 24 h sin «Recordarme» (02) y 30 días con él (08 en uso, 07 sin uso)'
+  pg_temp.motivo('02') = 'límite',
+  'límite total: 24 h sin «Recordarme» (02)'
 );
 select pg_temp.assert_true(
   pg_temp.motivo('03') = 'pestaña cerrada',
@@ -311,12 +311,16 @@ select pg_temp.assert_true(
   'las que no pasan ningún límite siguen igual (04, 05, 06, 09, 12)'
 );
 select pg_temp.assert_true(
+  pg_temp.motivo('08') = 'abierta' and pg_temp.viva('08'),
+  'con «Recordarme» no hay límite total: en uso a los 31 días de iniciada sigue abierta (08)'
+);
+select pg_temp.assert_true(
   pg_temp.viva('04') and pg_temp.viva('05') and pg_temp.viva('06')
-    and pg_temp.viva('09') and pg_temp.viva('12')
-    and (select count(*) = 5 from auth.sessions)
+    and pg_temp.viva('08') and pg_temp.viva('09') and pg_temp.viva('12')
+    and (select count(*) = 6 from auth.sessions)
     and exists (select 1 from auth.refresh_tokens where token = 't06')
     and not exists (select 1 from auth.refresh_tokens where token = 't01'),
-  'en auth.sessions quedan sólo las 5 vivas; las cerradas se llevan sus refresh tokens'
+  'en auth.sessions quedan sólo las 6 vivas; las cerradas se llevan sus refresh tokens'
 );
 select pg_temp.assert_true(
   not pg_temp.viva('17')
@@ -360,20 +364,20 @@ reset role;
 select pg_temp.como('56000000-0000-4000-8000-00000000000a', '56000000-0000-4000-8000-000000000004');
 set role authenticated;
 select pg_temp.assert_true(
-  public.sesiones_cerrar_demas() = 4,
-  'A cierra sus otras 4 sesiones (05, 06, 09 y 12)'
+  public.sesiones_cerrar_demas() = 5,
+  'A cierra sus otras 5 sesiones (05, 06, 08, 09 y 12)'
 );
 reset role;
 select pg_temp.assert_true(
   pg_temp.viva('04') and pg_temp.viva('21')
     and not pg_temp.viva('05') and not pg_temp.viva('06')
-    and not pg_temp.viva('09') and not pg_temp.viva('12')
+    and not pg_temp.viva('08') and not pg_temp.viva('09') and not pg_temp.viva('12')
     and not exists (select 1 from auth.refresh_tokens where token = 't06'),
   'sigue la actual (04) y la de B (21); las demás se borran con sus tokens'
 );
 select pg_temp.assert_true(
   pg_temp.motivo('05') = 'cerrada por ti' and pg_temp.motivo('06') = 'cerrada por ti'
-    and pg_temp.motivo('09') = 'cerrada por ti' and pg_temp.motivo('12') = 'cerrada por ti'
+    and pg_temp.motivo('08') = 'cerrada por ti' and pg_temp.motivo('09') = 'cerrada por ti' and pg_temp.motivo('12') = 'cerrada por ti'
     and pg_temp.motivo('04') = 'abierta' and pg_temp.motivo('10') = 'límite'
     and (select ciudad = 'León' from public.sesiones_presencia
           where session_id = '56000000-0000-4000-8000-000000000006')
