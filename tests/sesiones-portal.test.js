@@ -320,7 +320,7 @@ test("the sessions block lives in the «Sesiones» subview of «Acceso y segurid
   assert.match(cuenta, /id="sesiones"/);
   assert.match(cuenta, /Sesiones activas/);
   assert.match(cuenta, /Qué significa cada estado/);
-  assert.match(cuenta, /Activa ahora<\/span> se está usando en este momento\./);
+  assert.match(cuenta, /Activa ahora<\/span><span>Se está usando en este momento\.<\/span>/);
   assert.match(cuenta, /8 h sin uso/, "la cabecera dice 8 h sin «Recordarme» (corrección de S1)");
   assert.match(PORTAL, /configurarSesionesActivas\(session\)/);
 });
@@ -477,8 +477,36 @@ test("the controller fills the summary from the same list and refreshes while ei
 });
 
 test("the legend explains «Se está cerrando»", () => {
-  assert.match(HTML, /sesiones__insignia--cerrandose">Se está cerrando<\/span> ya llegó a su límite y se cierra en los próximos minutos\./);
+  assert.match(HTML, /sesiones__insignia--cerrandose">Se está cerrando<\/span><span>Ya llegó a su límite y se cierra en los próximos minutos\.<\/span>/);
   assert.match(read("src/app/features/portal/portal.css"), /\.sesiones__insignia--cerrandose\s*\{/);
+});
+
+test("state badges are pills with an icon per state, and the legend lists them as rows (L76)", () => {
+  /*
+    Una sola insignia para la tabla y para la leyenda: píldora con el icono de
+    su estado (punto, pausa, luna, ×, reloj) pintado con currentColor por
+    máscara. «Actual» conserva su borde y no lleva icono.
+  */
+  const css = read("src/app/features/portal/portal.css");
+  const regla = (selector) => {
+    const escapado = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const encontrada = css.match(new RegExp(`(?:^|\\n)${escapado}\\s*\\{([^}]*)\\}`));
+    assert.ok(encontrada, `${selector} must be defined in portal.css`);
+    return encontrada[1];
+  };
+  const pildora = regla(".sesiones__insignia:not(.sesiones__insignia--actual)");
+  assert.match(pildora, /border-radius:\s*999px;/);
+  assert.match(pildora, /display:\s*inline-flex;/);
+  const icono = regla(".sesiones__insignia:not(.sesiones__insignia--actual)::before");
+  assert.match(icono, /background-color:\s*currentColor;/);
+  assert.match(icono, /(?:^|[^-])mask:\s*var\(--icono\)/);
+  assert.match(icono, /-webkit-mask:\s*var\(--icono\)/);
+  for (const estado of ["activa", "sin-senal", "inactiva", "pestana-cerrada", "cerrandose"]) {
+    assert.match(css, new RegExp(`\\.sesiones__insignia--${estado}\\s*\\{[^}]*--icono:\\s*url\\("data:image/svg\\+xml,`), `${estado} declara su icono`);
+  }
+  const fila = regla(".sesiones__estados-lista li");
+  assert.match(fila, /display:\s*grid;/);
+  assert.match(fila, /border-block-start:\s*1px solid var\(--cfg-borde\);/);
 });
 
 test("the tables take the modal look: one card with separators between rows (S18)", () => {
