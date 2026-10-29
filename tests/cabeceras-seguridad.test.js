@@ -302,17 +302,46 @@ test("the slides catalog has its own header rule, and it differs from the genera
   assert.equal(valorDe(reglaSlides, "X-Robots-Tag"), "noindex, nofollow");
 });
 
-test("no path other than the slides catalog relaxes frame-ancestors or X-Frame-Options", () => {
+/*
+  La capa «Configuración» (T7b, S14, L39): «Mi cuenta» abre el portal dentro
+  de un <iframe> del propio sitio. Mismo relajo que slides y sólo ese:
+  frame-ancestors 'self' y X-Frame-Options SAMEORIGIN. Nada de afuera puede
+  enmarcar el portal; el resto de la CSP es la general, sin eval.
+*/
+const RUTA_PORTAL = "/app/features/portal(.*)";
+
+test("the portal has its own header rule, and it differs from the general CSP only in frame-ancestors", () => {
+  const reglaPortal = reglaDe(RUTA_PORTAL);
+  assert.ok(reglaPortal, `falta la regla de ${RUTA_PORTAL}`);
+
+  const orden = reglas().map((r) => r.source);
+  assert.ok(orden.indexOf(RUTA_PORTAL) > orden.indexOf(RUTA_APP),
+    "la regla del portal debe ir DESPUÉS de la general, o la general la pisa");
+
+  const cspPortal = valorDe(reglaPortal, "Content-Security-Policy") || "";
+  assert.ok(cspPortal.split(";").map((p) => p.trim()).includes("frame-ancestors 'self'"),
+    "la capa muestra el portal en un <iframe> del propio sitio");
+  assert.equal(cspPortal.replace("frame-ancestors 'self'", "frame-ancestors 'none'"), cspApp(),
+    "quitando frame-ancestors, la CSP del portal debe ser idéntica a la general");
+
+  assert.equal(valorDe(reglaPortal, "X-Frame-Options"), "SAMEORIGIN");
+  ["X-Content-Type-Options", "Referrer-Policy"].forEach((nombre) => {
+    assert.equal(valorDe(reglaPortal, nombre), valorDe(reglaDe(RUTA_APP), nombre),
+      `${nombre} del portal debe ser el mismo que el de la general`);
+  });
+});
+
+test("no path other than the slides catalog and the portal relaxes frame-ancestors or X-Frame-Options", () => {
   // El marco aislado de los decks con programa (_aislado) también lo enmarca el visor.
   const RUTA_AISLADO = "/content/slides/_aislado(.*)";
   // El marco de captura de portadas (_captura) también lo enmarca la página de Slides.
   const RUTA_CAPTURA = "/content/slides/_captura(.*)";
-  reglas().filter((r) => r.source !== RUTA_SLIDES && r.source !== RUTA_AISLADO && r.source !== RUTA_CAPTURA).forEach((r) => {
+  reglas().filter((r) => ![RUTA_SLIDES, RUTA_AISLADO, RUTA_CAPTURA, RUTA_PORTAL].includes(r.source)).forEach((r) => {
     const csp = valorDe(r, "Content-Security-Policy") || "";
     assert.doesNotMatch(
       csp.split(";").map((p) => p.trim()).find((p) => p.startsWith("frame-ancestors")) || "",
       /'self'/,
-      `${r.source} no debe relajar frame-ancestors: sólo el visor de slides lo necesita`
+      `${r.source} no debe relajar frame-ancestors: sólo el visor de slides y la capa del portal lo necesitan`
     );
 
     const xfo = valorDe(r, "X-Frame-Options");
