@@ -414,3 +414,18 @@ test("portal.js: en la capa, la ✕ y Esc avisan a la ventana de arriba en vez d
   assert.match(PORTAL_JS_SOURCE, /window\.top\.postMessage\([^)]*window\.location\.origin\)/,
     "el mensaje va sólo al mismo origen");
 });
+
+test("navbar.css: con la capa lista, el aviso de carga deja de dibujarse y no tapa el panel", () => {
+  /*
+    `.capa-config__cargando` tiene `display: grid` propio, que le gana al
+    `[hidden]` del navegador: el `hidden = true` del load no lo quitaba y el
+    párrafo, absoluto y a todo el tamaño de la caja, se quedaba encima del
+    iframe llevándose cada clic (menú y ✕). Lo apaga la misma clase `--lista`
+    que muestra el panel.
+  */
+  const css = read("src/app/shared/navbar/navbar.css");
+  assert.match(
+    css,
+    /\.capa-config__caja--lista \.capa-config__cargando\s*\{\s*display:\s*none;\s*\}/
+  );
+});

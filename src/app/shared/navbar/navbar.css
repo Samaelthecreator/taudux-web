@@ -684,6 +684,12 @@
     visibility: visible;
   }
 
+  /* Su display propio anula [hidden]: sin esto queda encima del iframe y se
+     lleva los clics. */
+  .capa-config__caja--lista .capa-config__cargando {
+    display: none;
+  }
+
   @media (max-width: 760px) {
     .capa-config {
       padding: 0;
