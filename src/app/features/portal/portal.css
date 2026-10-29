@@ -265,16 +265,50 @@
   vertical-align: middle;
 }
 
-/* «← Acceso y seguridad»: la salida de una subvista (L45). */
+/*
+  La salida de una subvista (L45): una flecha en cuadro junto a su título
+  (L77). Acotada a la cabecera para ganarle a `.sesiones a`, que pinta de
+  acento los enlaces de la lista.
+*/
+.portal__subvista-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.portal__subvista-cabecera .portal__section-title {
+  margin: 0;
+}
+
 .portal__volver {
-  justify-self: start;
-  color: var(--cfg-acento);
-  font-size: 0.95rem;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: 12px;
+  background-color: var(--cfg-tarjeta);
   text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+.portal__subvista-cabecera .portal__volver {
+  color: var(--cfg-texto);
 }
 
 .portal__volver:hover {
-  text-decoration: underline;
+  background-color: var(--cfg-menu-activo);
+}
+
+.portal__volver:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.portal__volver-icono {
+  inline-size: 20px;
+  block-size: 20px;
 }
 
 /*
@@ -478,6 +512,13 @@ a.portal__fila:hover {
   así porque las de «Eliminar cuenta» comparten la clase y se rediseñan en T10.
 */
 .portal__section-title + .portal__section-intro {
+  color: var(--cfg-texto-2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* En las subvistas el título va dentro de su cabecera (L77). */
+.portal__subvista-cabecera + .portal__section-intro {
   color: var(--cfg-texto-2);
   font-size: 15px;
   line-height: 1.6;
@@ -1132,6 +1173,56 @@ a.portal__fila:hover {
 
 .sesiones__mas {
   margin-block-start: 0.5rem;
+}
+
+/*
+  «Cerrar las demás sesiones» (L77): a la izquierda, con icono de salir. Clases
+  propias: `.portal__danger-button` y `.portal__form-actions` también los usan
+  «Eliminar cuenta» y los formularios.
+*/
+.sesiones__acciones {
+  justify-content: flex-start;
+  margin-block: 12px 4px;
+}
+
+.sesiones__cerrar-demas {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 45%, transparent);
+  border-radius: 12px;
+  background-color: transparent;
+  color: var(--color-error-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.sesiones__cerrar-demas::before {
+  content: "";
+  flex: none;
+  inline-size: 18px;
+  block-size: 18px;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M9%2021H5a2%202%200%200%201-2-2V5a2%202%200%200%201%202-2h4%27%2F%3E%3Cpath%20d%3D%27M16%2017l5-5-5-5%27%2F%3E%3Cpath%20d%3D%27M21%2012H9%27%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M9%2021H5a2%202%200%200%201-2-2V5a2%202%200%200%201%202-2h4%27%2F%3E%3Cpath%20d%3D%27M16%2017l5-5-5-5%27%2F%3E%3Cpath%20d%3D%27M21%2012H9%27%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+}
+
+.sesiones__cerrar-demas:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-error) 16%, transparent);
+}
+
+.sesiones__cerrar-demas:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.sesiones__cerrar-demas:disabled {
+  cursor: progress;
+  opacity: 0.7;
 }
 
 .sesiones__estados {

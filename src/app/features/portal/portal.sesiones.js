@@ -307,10 +307,10 @@ function configurarSesionesActivas(session) {
       nodos.push(
         el(
           "div",
-          { class: "portal__form-actions" },
+          { class: "portal__form-actions sesiones__acciones" },
           el("button", {
             type: "button",
-            class: "button button--outline portal__danger-button",
+            class: "sesiones__cerrar-demas",
             "data-foco": "cerrar-demas",
             onclick: (evento) => cerrarDemas(evento.currentTarget, demas),
             texto: "Cerrar las demás sesiones",

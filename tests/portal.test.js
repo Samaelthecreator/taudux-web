@@ -498,6 +498,30 @@ test("each subview declares its parent and a «← volver» link to «Acceso y s
   });
 });
 
+test("subviews go back with a square arrow next to their title, not a text link (L77)", () => {
+  const html = read("src/app/features/portal/index.html");
+  for (const id of ["sesiones", "contrasena"]) {
+    const inicio = html.indexOf(`id="seccion-${id}"`);
+    assert.notEqual(inicio, -1, `falta la sección ${id}`);
+    const markup = html.slice(inicio, html.indexOf("</section>", inicio));
+    const cabecera = markup.match(/<div class="portal__subvista-cabecera">([\s\S]*?)<\/div>/);
+    assert.ok(cabecera, `${id}: el título y la flecha van juntos en .portal__subvista-cabecera`);
+    assert.match(cabecera[1], /<a class="portal__volver" href="#cuenta" aria-label="Volver a Acceso y seguridad"><svg[^>]*aria-hidden="true"/);
+    assert.match(cabecera[1], /<h2 class="portal__section-title[^"]*" id="titulo\w+" tabindex="-1">/);
+    assert.doesNotMatch(markup, /← Acceso y seguridad/);
+  }
+  const css = read("src/app/features/portal/portal.css");
+  const volver = css.match(/\n\.portal__volver\s*\{([^}]*)\}/);
+  assert.ok(volver);
+  assert.match(volver[1], /inline-size:\s*44px;/);
+  assert.match(volver[1], /border-radius:\s*12px;/);
+  assert.match(
+    css,
+    /\n\.portal__subvista-cabecera \+ \.portal__section-intro\s*\{[^}]*font-size:\s*15px;/,
+    "la introducción ya no sigue al título sino a su cabecera: conserva el estilo de T7c"
+  );
+});
+
 test("moving inside the panel replaces the history entry instead of adding one (L45)", () => {
   const js = read("src/app/features/portal/portal.js");
   assert.match(js, /hashDeEnlaceInterno\(/);

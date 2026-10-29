@@ -481,6 +481,23 @@ test("the legend explains «Se está cerrando»", () => {
   assert.match(read("src/app/features/portal/portal.css"), /\.sesiones__insignia--cerrandose\s*\{/);
 });
 
+test("«Cerrar las demás sesiones» has its own style, aligned left with an exit icon (L77)", () => {
+  /*
+    `.portal__danger-button` y `.portal__form-actions` los comparten «Eliminar
+    cuenta» y los formularios: el estilo nuevo va en clases propias.
+  */
+  assert.match(CONTROLADOR, /\{ class: "portal__form-actions sesiones__acciones" \}/);
+  assert.match(CONTROLADOR, /class: "sesiones__cerrar-demas",\s*"data-foco": "cerrar-demas"/);
+  const css = read("src/app/features/portal/portal.css");
+  assert.match(css, /\.sesiones__acciones\s*\{[^}]*justify-content:\s*flex-start;/);
+  const boton = css.match(/\n\.sesiones__cerrar-demas\s*\{([^}]*)\}/);
+  assert.ok(boton);
+  assert.match(boton[1], /border-radius:\s*12px;/);
+  assert.match(boton[1], /color:\s*var\(--color-error-text\);/);
+  assert.match(css, /\.sesiones__cerrar-demas::before\s*\{[^}]*mask:\s*url\("data:image\/svg\+xml,/);
+  assert.match(css, /\.sesiones__cerrar-demas:hover:not\(:disabled\)\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--color-error\) 16%, transparent\);/);
+});
+
 test("state badges are pills with an icon per state, and the legend lists them as rows (L76)", () => {
   /*
     Una sola insignia para la tabla y para la leyenda: píldora con el icono de
