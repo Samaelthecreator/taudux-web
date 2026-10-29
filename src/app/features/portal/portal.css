@@ -230,6 +230,23 @@
   outline: none;
 }
 
+/* «Pronto» junto al título de Mi plan y Pagos (T10, L63): la misma insignia
+   del menú, alineada con la línea del título. */
+.portal__insignia-titulo {
+  display: inline-block;
+  margin-inline-start: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border: var(--border-subtle);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-subtle);
+  font-family: system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 /* «← Acceso y seguridad»: la salida de una subvista (L45). */
 .portal__volver {
   justify-self: start;
@@ -801,11 +818,6 @@ a.portal__fila:hover {
   cursor: progress;
 }
 
-.portal__account-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
 /*
   Zona de acciones irreversibles. El borde superior la separa del resto de la
   sección para que "Eliminar cuenta" no se lea como un ajuste más de la lista.
@@ -1229,6 +1241,15 @@ a.portal__fila:hover {
   .sesiones__icono-caja {
     inline-size: 36px;
     block-size: 36px;
+  }
+
+  /* «Cerrar sesión» (T10, L63): en el teléfono el botón baja y ocupa el ancho. */
+  .portal__fila--accion {
+    flex-wrap: wrap;
+  }
+
+  .portal__fila--accion .portal__boton-fila {
+    flex-basis: 100%;
   }
 }
 }

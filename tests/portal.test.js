@@ -568,8 +568,58 @@ test("unavailable portal sections ship no interactive controls at all", () => {
     assert.doesNotMatch(markup, /<select/i, `${id} no debe tener selects`);
     assert.doesNotMatch(markup, /<textarea/i, `${id} no debe tener textareas`);
     assert.doesNotMatch(markup, /<button/i, `${id} no debe tener botones`);
-    assert.match(markup, /coming-soon__description/, `${id} debe explicar qué falta`);
+    assert.doesNotMatch(markup, /<a\b/i, `${id} no debe tener enlaces`);
   });
+});
+
+test("Mi plan y Pagos llevan «Pronto» junto al título y conservan su explicación en una tarjeta del panel (T10, L63)", () => {
+  const html = read("src/app/features/portal/index.html");
+  const casos = [
+    { id: "plan", titulo: "tituloPlan", texto: "Todavía no hay planes de suscripción" },
+    { id: "pagos", titulo: "tituloPagos", texto: "Todavía no cobramos desde el sitio" },
+  ];
+  casos.forEach(({ id, titulo, texto }) => {
+    const markup = markupSeccion(html, id);
+    const h2 = markup.match(new RegExp(`<h2[^>]*id="${titulo}"[^>]*>([\\s\\S]*?)</h2>`));
+    assert.ok(h2, `falta el título de ${id}`);
+    assert.match(h2[1], /<span class="portal__insignia-titulo">Pronto<\/span>/, `${id}: la insignia va junto al título`);
+    assert.match(markup, /<div class="portal__filas">\s*<p class="portal__fila portal__fila--fija portal__fila-desc">/, `${id}: tarjeta con el estilo del panel`);
+    assert.ok(markup.includes(texto), `${id} conserva su texto de hoy`);
+    assert.doesNotMatch(markup, /coming-soon/, `${id} ya no usa la tarjeta de «coming-soon»`);
+  });
+  assert.doesNotMatch(html, /coming-soon\.css/, "el portal ya no carga la hoja de «coming-soon»");
+});
+
+test("«Cerrar sesión» es una fila que explica que solo sale de este dispositivo (T10, L63)", () => {
+  const html = read("src/app/features/portal/index.html");
+  const cuenta = markupSeccion(html, "cuenta");
+  const fila = cuenta.match(/<div class="portal__fila portal__fila--fija portal__fila--accion" id="filaCerrarSesion">([\s\S]*?)<\/div>/);
+  assert.ok(fila, "falta la fila #filaCerrarSesion");
+  assert.match(fila[1], /<span class="portal__fila-titulo">Cerrar sesión<\/span>/);
+  assert.match(fila[1], /<span class="portal__fila-desc">Sales de tu cuenta solo en este dispositivo\.<\/span>/);
+  assert.match(fila[1], /<button type="button" class="portal__boton-fila" id="botonCerrarSesion">Cerrar sesión<\/button>/);
+  assert.doesNotMatch(cuenta, /portal__account-actions/, "el botón suelto desaparece");
+  assert.ok(cuenta.indexOf('id="filaCerrarSesion"') < cuenta.indexOf("portal__danger-zone"), "la fila va antes de Eliminar cuenta");
+});
+
+test("en el teléfono, el botón de «Cerrar sesión» baja y ocupa todo el ancho (T10, L63)", () => {
+  const css = read("src/app/features/portal/portal.css");
+  const movil = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.match(movil, /\.portal__fila--accion\s*\{[^}]*flex-wrap:\s*wrap;/);
+  assert.match(movil, /\.portal__fila--accion \.portal__boton-fila\s*\{[^}]*flex-basis:\s*100%;/);
+});
+
+test("Eliminar cuenta con Google usa el texto de S16 y sigue oculto tras «Eliminar cuenta» (T10, L63)", () => {
+  const html = read("src/app/features/portal/index.html");
+  const aviso = html.match(/<div class="portal__form" id="avisoSinContrasenaEliminar" hidden>([\s\S]*?)<\/div>\s*<form/);
+  assert.ok(aviso, "el aviso de Google nace oculto, antes del formulario con contraseña");
+  assert.match(aviso[1], /<p class="portal__section-intro">Para confirmar que eres tú, te pediremos iniciar sesión otra vez con Google\.<\/p>/);
+  assert.doesNotMatch(aviso[1], /Vuelve a entrar con Google/, "el texto anterior se va");
+  assert.match(aviso[1], /id="botonReautenticarGoogle"[^>]*>Continuar con Google<\/button>/);
+  // El flujo con contraseña sigue igual: botón rojo, formulario oculto y su campo.
+  assert.match(html, /<button type="button" class="button button--outline portal__danger-button" id="botonMostrarEliminarCuenta">Eliminar cuenta<\/button>/);
+  assert.match(html, /<form id="formEliminarCuenta" class="portal__form" novalidate hidden>/);
+  assert.match(html, /id="eliminarCuentaContrasena"[^>]*autocomplete="current-password"/);
 });
 
 /* Bloque E — sección "Preferencias de correo". */

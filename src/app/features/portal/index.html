@@ -15,7 +15,6 @@
   <link rel="stylesheet" href="/app/shared/panel/panel.css">
   <link rel="stylesheet" href="/app/shared/field/field.css">
   <link rel="stylesheet" href="/app/shared/toast/toast.css">
-  <link rel="stylesheet" href="/app/shared/coming-soon/coming-soon.css">
   <link rel="stylesheet" href="/app/shared/confirm-dialog/confirm-dialog.css">
   <link rel="stylesheet" href="/app/features/auth/auth.css">
   <link rel="stylesheet" href="/app/features/portal/portal.css">
@@ -195,8 +194,14 @@
                 <p class="portal__nota" id="notaNoReconoces"></p>
 
                 <h3 class="portal__grupo-titulo">Cuenta</h3>
-                <div class="portal__account-actions">
-                  <button type="button" class="button button--outline" id="botonCerrarSesion">Cerrar sesión</button>
+                <div class="portal__filas">
+                  <div class="portal__fila portal__fila--fija portal__fila--accion" id="filaCerrarSesion">
+                    <span class="portal__fila-datos">
+                      <span class="portal__fila-titulo">Cerrar sesión</span>
+                      <span class="portal__fila-desc">Sales de tu cuenta solo en este dispositivo.</span>
+                    </span>
+                    <button type="button" class="portal__boton-fila" id="botonCerrarSesion">Cerrar sesión</button>
+                  </div>
                 </div>
 
                 <div class="portal__danger-zone">
@@ -205,7 +210,7 @@
                   <button type="button" class="button button--outline portal__danger-button" id="botonMostrarEliminarCuenta">Eliminar cuenta</button>
 
                   <div class="portal__form" id="avisoSinContrasenaEliminar" hidden>
-                    <p class="portal__section-intro">Para eliminar tu cuenta necesitamos confirmar que eres tú. Vuelve a entrar con Google para continuar.</p>
+                    <p class="portal__section-intro">Para confirmar que eres tú, te pediremos iniciar sesión otra vez con Google.</p>
                     <div class="portal__form-actions">
                       <button type="button" class="button button--outline" id="botonReautenticarGoogle" data-loading-text="Redirigiendo…">Continuar con Google</button>
                     </div>
@@ -330,9 +335,9 @@
               </section>
 
               <section class="portal__section" id="seccion-plan" data-seccion="plan" aria-labelledby="tituloPlan" hidden>
-                <h2 class="portal__section-title" id="tituloPlan">Mi plan</h2>
-                <div class="coming-soon__card">
-                  <p class="coming-soon__description">
+                <h2 class="portal__section-title" id="tituloPlan">Mi plan <span class="portal__insignia-titulo">Pronto</span></h2>
+                <div class="portal__filas">
+                  <p class="portal__fila portal__fila--fija portal__fila-desc">
                     Todavía no hay planes de suscripción: los cursos se contratan uno
                     por uno. Si alguna vez lanzamos planes, acá vas a ver el tuyo.
                   </p>
@@ -340,9 +345,9 @@
               </section>
 
               <section class="portal__section" id="seccion-pagos" data-seccion="pagos" aria-labelledby="tituloPagos" hidden>
-                <h2 class="portal__section-title" id="tituloPagos">Pagos</h2>
-                <div class="coming-soon__card">
-                  <p class="coming-soon__description">
+                <h2 class="portal__section-title" id="tituloPagos">Pagos <span class="portal__insignia-titulo">Pronto</span></h2>
+                <div class="portal__filas">
+                  <p class="portal__fila portal__fila--fija portal__fila-desc">
                     Todavía no cobramos desde el sitio, así que no hay historial que
                     mostrar. Cuando los pagos pasen por acá, vas a encontrar tus
                     comprobantes en esta sección.
