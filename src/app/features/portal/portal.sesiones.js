@@ -290,13 +290,11 @@ function configurarSesionesActivas(session) {
     );
   }
 
-  function irAContrasena(evento) {
-    evento.preventDefault();
+  // El cambio a la subvista #contrasena lo hace la navegación interna de
+  // portal.js (sin entrada nueva en el historial, L45); acá sólo se deja la
+  // lista como estaba para cuando se vuelva.
+  function irAContrasena() {
     volverALista();
-    const campo = document.getElementById("contrasenaActual");
-    if (!campo) return;
-    campo.scrollIntoView({ block: "center" });
-    campo.focus({ preventScroll: true });
   }
 
   function dibujarDetalle() {
@@ -330,7 +328,7 @@ function configurarSesionesActivas(session) {
           "p",
           { class: "portal__field-note" },
           ayuda.texto,
-          ayuda.enlace ? el("a", { href: "#cuenta", onclick: irAContrasena, texto: ayuda.enlace }) : null,
+          ayuda.enlace ? el("a", { href: "#contrasena", onclick: irAContrasena, texto: ayuda.enlace }) : null,
           ayuda.final
         )
       );

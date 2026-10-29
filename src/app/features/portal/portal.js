@@ -28,14 +28,54 @@
     secciones().forEach((seccion) => {
       seccion.hidden = seccion.dataset.seccion !== id;
     });
+    const marcada = seccionDelMenu(id, SECCIONES_PORTAL);
     enlaces().forEach((enlace) => {
-      if (enlace.dataset.seccion === id) enlace.setAttribute("aria-current", "page");
+      if (enlace.dataset.seccion === marcada) enlace.setAttribute("aria-current", "page");
       else enlace.removeAttribute("aria-current");
     });
   }
 
   function aplicarHash() {
     mostrarSeccion(resolverSeccionActiva(window.location.hash, SECCIONES_PORTAL));
+  }
+
+  /*
+    Moverse dentro del panel no suma entradas al historial (L45): «Atrás» sale
+    de Configuración, igual que la ✕. `location.replace` con sólo el hash
+    cambia la URL sin entrada nueva y dispara el mismo hashchange que ya
+    escucha aplicarHash(), así que la URL y la sección visible siguen yendo
+    juntas. La sección se muestra acá mismo, sin esperar al hashchange, para
+    poder llevar el foco a su título: un enlace dentro del contenido (una
+    fila, «← volver») desaparece al cambiar de sección y el foco se perdería.
+    Los del menú siguen visibles, así que conservan el foco.
+  */
+  function configurarNavegacionInterna() {
+    if (!contenido) return;
+    contenido.addEventListener("click", (evento) => {
+      if (evento.defaultPrevented || evento.button !== 0) return;
+      if (evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+      const enlace = evento.target.closest("a[href]");
+      if (!enlace) return;
+      const hash = hashDeEnlaceInterno(enlace.getAttribute("href"), SECCIONES_PORTAL);
+      if (!hash) return;
+      evento.preventDefault();
+      if (window.location.hash !== hash) window.location.replace(hash);
+      const id = hash.slice(1);
+      mostrarSeccion(id);
+      if (!enlace.classList.contains("portal__nav-link")) {
+        const titulo = document.querySelector(`#seccion-${id} .portal__section-title`);
+        if (titulo) titulo.focus({ preventScroll: true });
+        window.scrollTo({ top: 0 });
+      }
+    });
+  }
+
+  function configurarCierrePanel() {
+    const boton = document.getElementById("botonCerrarPortal");
+    if (!boton) return;
+    boton.addEventListener("click", () => {
+      window.location.assign(destinoAlCerrar(document.referrer, window.location.origin));
+    });
   }
 
   // El campo culpable de un error recibe aria-describedby + aria-invalid; el
@@ -760,6 +800,7 @@
 
     aplicarHash();
     window.addEventListener("hashchange", aplicarHash);
+    configurarNavegacionInterna();
 
     const perfil = await obtenerPerfil(session);
     configurarFormularioPerfil(session, perfil);
@@ -782,5 +823,6 @@
   }
 
   configurarReintentoReauth();
+  configurarCierrePanel();
   inicializarPortal();
 })();

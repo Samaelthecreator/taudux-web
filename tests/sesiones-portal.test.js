@@ -372,14 +372,22 @@ test("the nucleus and the controller load after sesiones.service.js and confirm-
   assert.ok(controlador < pos("/app/features/portal/portal.js"));
 });
 
-test("the sessions block lives inside «Acceso y seguridad»", () => {
-  const cuenta = HTML.slice(HTML.indexOf('id="seccion-cuenta"'), HTML.indexOf('id="seccion-correo"'));
+test("the sessions block lives in the «Sesiones» subview of «Acceso y seguridad»", () => {
+  const inicio = HTML.indexOf('id="seccion-sesiones"');
+  assert.notEqual(inicio, -1, "falta la subvista de sesiones");
+  const cuenta = HTML.slice(inicio, HTML.indexOf("</section>", inicio));
+  assert.match(HTML.slice(HTML.lastIndexOf("<section", inicio), inicio + 200), /data-padre="cuenta"/);
   assert.match(cuenta, /id="sesiones"/);
   assert.match(cuenta, /Sesiones activas/);
   assert.match(cuenta, /Qué significa cada estado/);
   assert.match(cuenta, /Activa ahora<\/span> se está usando en este momento\./);
   assert.match(cuenta, /8 h sin uso/, "la cabecera dice 8 h sin «Recordarme» (corrección de S1)");
   assert.match(PORTAL, /configurarSesionesActivas\(session\)/);
+});
+
+test("«cambia tu contraseña» opens the password subview (L45)", () => {
+  assert.match(CONTROLADOR, /href: "#contrasena", onclick: irAContrasena/);
+  assert.doesNotMatch(CONTROLADOR, /href: "#cuenta"/);
 });
 
 test("the controller never writes data as HTML: city and user agent come from outside", () => {

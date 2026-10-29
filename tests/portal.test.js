@@ -9,6 +9,9 @@ const read = (relativePath) => fs.readFileSync(path.join(ROOT, relativePath), "u
 const {
   SECCIONES_PORTAL,
   resolverSeccionActiva,
+  seccionDelMenu,
+  hashDeEnlaceInterno,
+  destinoAlCerrar,
 } = require(path.join(ROOT, "src/app/features/portal/portal.secciones.js"));
 
 const {
@@ -74,6 +77,47 @@ test("an unavailable section is still a valid destination", () => {
   assert.equal(resolverSeccionActiva("#pagos"), "pagos");
   assert.equal(resolverSeccionActiva("#plan"), "plan");
   assert.equal(resolverSeccionActiva("#correo"), "correo");
+});
+
+/* Bloque A-bis — panel «Configuración» (S14, L45): subvistas, ✕ y historial. */
+
+test("Contraseña and Sesiones are subviews of «Acceso y seguridad» reachable by their own hash", () => {
+  ["contrasena", "sesiones"].forEach((id) => {
+    const subvista = SECCIONES_PORTAL.find((seccion) => seccion.id === id);
+    assert.ok(subvista, `falta la subvista ${id}`);
+    assert.equal(subvista.padre, "cuenta");
+    assert.equal(subvista.disponible, true);
+    assert.equal(resolverSeccionActiva(`#${id}`), id);
+  });
+});
+
+test("a subview marks its parent in the menu; a top-level section marks itself", () => {
+  assert.equal(seccionDelMenu("contrasena"), "cuenta");
+  assert.equal(seccionDelMenu("sesiones"), "cuenta");
+  assert.equal(seccionDelMenu("perfil"), "perfil");
+  assert.equal(seccionDelMenu("cuenta"), "cuenta");
+  assert.equal(seccionDelMenu("no-existe"), "perfil", "un id desconocido cae en la primera sección");
+});
+
+test("only a bare hash of a known section counts as in-panel navigation", () => {
+  assert.equal(hashDeEnlaceInterno("#sesiones"), "#sesiones");
+  assert.equal(hashDeEnlaceInterno("#cuenta"), "#cuenta");
+  assert.equal(hashDeEnlaceInterno("#no-existe"), null);
+  assert.equal(hashDeEnlaceInterno("/#contacto"), null, "Contáctanos sale del portal");
+  assert.equal(hashDeEnlaceInterno("#"), null);
+  assert.equal(hashDeEnlaceInterno(null), null);
+});
+
+test("the ✕ goes back to the previous page of the site, never to the login or the portal", () => {
+  const origen = "https://taudux.com";
+  assert.equal(destinoAlCerrar("https://taudux.com/app/features/courses/cursos?c=2#x", origen), "/app/features/courses/cursos?c=2#x");
+  assert.equal(destinoAlCerrar("https://taudux.com/", origen), "/");
+  assert.equal(destinoAlCerrar("https://taudux.com/app/features/auth/login/?next=x", origen), "/");
+  assert.equal(destinoAlCerrar("https://taudux.com/app/features/auth/oauth-callback/", origen), "/");
+  assert.equal(destinoAlCerrar("https://taudux.com/app/features/portal/#cuenta", origen), "/");
+  assert.equal(destinoAlCerrar("https://accounts.google.com/o/oauth2", origen), "/");
+  assert.equal(destinoAlCerrar("", origen), "/");
+  assert.equal(destinoAlCerrar("no es una url", origen), "/");
 });
 
 /* Bloque B — núcleo puro del formulario "Editar Perfil". */
@@ -423,6 +467,46 @@ test("the portal section markup matches the declared section catalog", () => {
     assert.match(html, new RegExp(`id="seccion-${seccion.id}"`), `falta la sección ${seccion.id}`);
     assert.match(html, new RegExp(`href="#${seccion.id}"`), `falta el enlace a ${seccion.id}`);
   });
+});
+
+test("the portal is a «Configuración» panel with a ✕ that leaves it", () => {
+  const html = read("src/app/features/portal/index.html");
+  assert.match(html, /<h1[^>]*>Configuración<\/h1>/);
+  assert.match(html, /<button[^>]*id="botonCerrarPortal"[^>]*aria-label="Cerrar configuración"/);
+  const js = read("src/app/features/portal/portal.js");
+  assert.match(js, /destinoAlCerrar\(document\.referrer,\s*window\.location\.origin\)/);
+});
+
+test("each subview declares its parent and a «← volver» link to «Acceso y seguridad»", () => {
+  const html = read("src/app/features/portal/index.html");
+  SECCIONES_PORTAL.filter((seccion) => seccion.padre).forEach((seccion) => {
+    const etiqueta = html.match(new RegExp(`<section[^>]*id="seccion-${seccion.id}"[^>]*>`));
+    assert.ok(etiqueta, `falta la sección ${seccion.id}`);
+    assert.match(etiqueta[0], new RegExp(`data-padre="${seccion.padre}"`));
+    const inicio = html.indexOf(etiqueta[0]);
+    const markup = html.slice(inicio, html.indexOf("</section>", inicio));
+    assert.match(markup, /<a[^>]*class="portal__volver"[^>]*href="#cuenta"|<a[^>]*href="#cuenta"[^>]*class="portal__volver"/);
+  });
+});
+
+test("moving inside the panel replaces the history entry instead of adding one (L45)", () => {
+  const js = read("src/app/features/portal/portal.js");
+  assert.match(js, /hashDeEnlaceInterno\(/);
+  assert.match(js, /window\.location\.replace\(hash\)/);
+  assert.doesNotMatch(js, /pushState/);
+  assert.match(js, /seccionDelMenu\(id/, "el menú marca al padre de una subvista");
+});
+
+test("the password form lives in its own subview, not in «Acceso y seguridad»", () => {
+  const html = read("src/app/features/portal/index.html");
+  const contrasena = markupSeccion(html, "contrasena");
+  assert.match(contrasena, /<form id="formContrasena"/);
+  assert.match(contrasena, /id="avisoSinContrasena"/);
+  const cuenta = markupSeccion(html, "cuenta");
+  assert.doesNotMatch(cuenta, /id="formContrasena"/);
+  assert.match(cuenta, /href="#contrasena"/);
+  assert.match(cuenta, /href="#sesiones"/);
+  assert.match(cuenta, /id="formEliminarCuenta"/, "Eliminar cuenta se queda en Acceso y seguridad: ahí vuelve Google");
 });
 
 /* Bloque C-bis — la decisión de producto: las secciones "Pronto" no simulan trabajar. */

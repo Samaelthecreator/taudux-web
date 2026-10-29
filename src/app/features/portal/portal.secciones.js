@@ -6,11 +6,16 @@
   Una sección con `disponible: false` sigue siendo un destino válido: la página
   existe y explica qué falta, no se esconde. Lo que nunca vale es un hash
   desconocido — ahí se cae a la primera sección en vez de dejar el portal vacío.
+
+  Una sección con `padre` es una subvista: tiene su propio hash, no aparece en
+  el menú y, mientras está abierta, el menú marca a su padre.
 */
 
 const SECCIONES_PORTAL = [
-  { id: "perfil", etiqueta: "Editar Perfil", disponible: true },
+  { id: "perfil", etiqueta: "Editar perfil", disponible: true },
   { id: "cuenta", etiqueta: "Acceso y seguridad", disponible: true },
+  { id: "contrasena", etiqueta: "Contraseña", disponible: true, padre: "cuenta" },
+  { id: "sesiones", etiqueta: "Sesiones activas", disponible: true, padre: "cuenta" },
   { id: "correo", etiqueta: "Preferencias de avisos", disponible: true },
   { id: "plan", etiqueta: "Mi plan", disponible: false },
   { id: "pagos", etiqueta: "Pagos", disponible: false },
@@ -33,9 +38,48 @@ function resolverSeccionActiva(hash, secciones = SECCIONES_PORTAL) {
   return encontrada ? encontrada.id : disponibles[0].id;
 }
 
+// La entrada del menú que queda marcada: la del padre si `id` es una subvista.
+function seccionDelMenu(id, secciones = SECCIONES_PORTAL) {
+  const resuelta = resolverSeccionActiva(id, secciones);
+  const seccion = secciones.find((candidata) => candidata.id === resuelta);
+  return (seccion && seccion.padre) || resuelta;
+}
+
+/*
+  El `href` de un enlace que navega dentro del panel: sólo un hash desnudo de
+  una sección conocida. Todo lo demás (`/#contacto`, un hash que no existe) es
+  un enlace normal y el navegador lo sigue como siempre.
+*/
+function hashDeEnlaceInterno(href, secciones = SECCIONES_PORTAL) {
+  if (typeof href !== "string" || !href.startsWith("#")) return null;
+  const id = normalizarHash(href);
+  return secciones.some((seccion) => seccion.id === id) ? `#${id}` : null;
+}
+
+/*
+  A dónde lleva la ✕: a la página del sitio de la que vino, salvo que sea una
+  pantalla de acceso (volver al login sería volver a entrar) o el propio
+  portal. Sin referrer útil —abierto desde un correo, otro sitio o Google— va
+  al inicio.
+*/
+function destinoAlCerrar(referrer, origen) {
+  let url;
+  try {
+    url = new URL(referrer);
+  } catch {
+    return "/";
+  }
+  if (url.origin !== origen) return "/";
+  if (/^\/app\/features\/(auth|portal)(\/|$)/.test(url.pathname)) return "/";
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     SECCIONES_PORTAL,
     resolverSeccionActiva,
+    seccionDelMenu,
+    hashDeEnlaceInterno,
+    destinoAlCerrar,
   });
 }

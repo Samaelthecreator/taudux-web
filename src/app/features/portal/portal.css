@@ -3,15 +3,27 @@
 @layer features {
 /*
   La altura pelada, no --espacio-bajo-navbar como el resto de las páginas: acá
-  el aire ya lo pone .portal__header con su padding-block de 2.5rem. Sumarle el
-  1.5rem del token daría 10.5rem, casi un tercio más de aire que cualquier otra
-  pantalla, y el título del portal nacería flotando.
+  el aire ya lo pone .portal__panel con su margen de 2rem. Sumarle el 1.5rem
+  del token dejaría el panel flotando lejos de la barra.
 
   Sigue colgando de la misma perilla, que es lo que importa: si el navbar cambia
   de alto, esto lo sigue solo. Lo que no comparte es el escalón, porque el
   escalón acá lo pone otro. Fijado en tests/ui-consolidation.test.js.
+
+  Los tokens --cfg-* son los de la maqueta neutra de «Configuración» (S14).
+  Viven en .portal y no en :root: el resto del sitio conserva su paleta.
 */
 .portal {
+  --cfg-fondo: #141414;
+  --cfg-tarjeta: #1f1f1f;
+  --cfg-pie: #1a1a1a;
+  --cfg-menu-activo: #262626;
+  --cfg-texto: #e0e0e0;
+  --cfg-texto-2: #a3a3a3;
+  --cfg-borde: rgba(255, 255, 255, 0.1);
+  --cfg-acento: #0cc0df;
+  --cfg-primario: #1149a5;
+
   min-block-size: 100vh;
   padding-block-start: var(--navbar-height);
   padding-block-end: 4rem;
@@ -22,22 +34,63 @@
   padding-inline: 2rem;
 }
 
+.portal__panel {
+  margin-block-start: 2rem;
+  border: 1px solid var(--cfg-borde);
+  border-radius: 20px;
+  background-color: var(--cfg-fondo);
+  color: var(--cfg-texto);
+  padding-block-end: 2rem;
+}
+
+.portal__panel > :not(.portal__header) {
+  margin: 1.5rem 1.5rem 0;
+}
+
 .portal__header {
-  padding-block: 2.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 1rem 1.5rem;
+  border-block-end: 1px solid var(--cfg-borde);
 }
 
 .portal__title {
-  font-size: clamp(1.8rem, 4vw, 2.4rem);
-  margin-block-end: 0.5rem;
-  background: var(--gradient-heading);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--cfg-texto);
 }
 
-.portal__intro {
-  color: var(--color-text-muted);
-  line-height: 1.7;
+.portal__cerrar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--cfg-texto);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.portal__cerrar svg {
+  inline-size: 22px;
+  block-size: 22px;
+}
+
+.portal__cerrar:hover {
+  background-color: var(--cfg-menu-activo);
+}
+
+.portal__cerrar:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .portal__startup {
@@ -62,7 +115,6 @@
 .portal__sidebar {
   position: sticky;
   top: calc(var(--navbar-height) + 1rem);
-  padding: 1rem;
 }
 
 .portal__nav {
@@ -76,17 +128,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-field);
-  color: var(--color-text-muted);
+  min-block-size: 48px;
+  padding: 0 1.1rem;
+  border-radius: var(--radius-pill);
+  color: var(--cfg-texto);
   font-size: 0.95rem;
+  white-space: nowrap;
   text-decoration: none;
   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .portal__nav-link:hover {
-  color: var(--color-text);
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: var(--cfg-menu-activo);
 }
 
 .portal__nav-link:focus-visible {
@@ -95,8 +148,8 @@
 }
 
 .portal__nav-link[aria-current="page"] {
-  color: var(--color-accent);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  background-color: var(--cfg-menu-activo);
+  font-weight: 600;
 }
 
 .portal__nav-badge {
@@ -130,6 +183,60 @@
 
 .portal__section-title {
   font-size: clamp(1.3rem, 3vw, 1.7rem);
+}
+
+.portal__section-title:focus {
+  outline: none;
+}
+
+/* «← Acceso y seguridad»: la salida de una subvista (L45). */
+.portal__volver {
+  justify-self: start;
+  color: var(--cfg-acento);
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.portal__volver:hover {
+  text-decoration: underline;
+}
+
+/* Filas que abren una subvista: una tarjeta con separadores. */
+.portal__filas {
+  display: grid;
+  border: 1px solid var(--cfg-borde);
+  border-radius: 16px;
+  background-color: var(--cfg-tarjeta);
+  overflow: hidden;
+}
+
+.portal__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  color: var(--cfg-texto);
+  text-decoration: none;
+  overflow-wrap: break-word;
+}
+
+.portal__fila + .portal__fila {
+  border-block-start: 1px solid var(--cfg-borde);
+}
+
+.portal__fila:hover {
+  background-color: var(--cfg-pie);
+}
+
+.portal__fila:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.portal__fila span {
+  color: var(--cfg-texto-2);
+  font-size: 1.3rem;
 }
 
 .portal__section-intro {
@@ -564,8 +671,28 @@
 }
 
 @media (max-width: 760px) {
+  /* En teléfono el panel ocupa toda la pantalla (S14). */
+  .portal {
+    padding-block-end: 0;
+  }
+
   .portal__container {
-    padding-inline: 1.25rem;
+    padding-inline: 0;
+  }
+
+  .portal__panel {
+    margin-block-start: 0;
+    min-block-size: calc(100vh - var(--navbar-height));
+    border: 0;
+    border-radius: 0;
+  }
+
+  .portal__panel > :not(.portal__header) {
+    margin: 1rem 1rem 0;
+  }
+
+  .portal__header {
+    padding-inline-start: 1rem;
   }
 
   .portal__layout {
@@ -578,12 +705,22 @@
 
   .portal__nav {
     flex-direction: row;
+    gap: 6px;
     overflow-x: auto;
     scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .portal__nav::-webkit-scrollbar {
+    display: none;
   }
 
   .portal__nav-link {
     flex: 0 0 auto;
+    min-block-size: 44px;
+    padding: 0 0.9rem;
+    font-size: 0.9rem;
+    background-color: var(--cfg-tarjeta);
     scroll-snap-align: start;
   }
 }
