@@ -146,7 +146,7 @@ function configurarSesionesActivas(session) {
 
   // En un teléfono la tabla se desliza dentro de su caja: la página no
   // scrollea de lado (L62). Abiertas y cerradas usan la misma (L66).
-  function tabla(columnas, filas, { conAccion = false } = {}) {
+  function tabla(columnas, filas, { conAccion = false, despues = [] } = {}) {
     return el(
       "div",
       { class: "sesiones__tabla-envoltorio" },
@@ -163,17 +163,44 @@ function configurarSesionesActivas(session) {
             conAccion ? el("th", { scope: "col", class: "sesiones__accion", "aria-label": "Acciones" }) : null
           )
         ),
-        el("tbody", {}, ...filas)
+        el("tbody", {}, ...filas),
+        ...despues
       )
     );
   }
 
-  function tablaSesiones(items, ahora) {
-    return tabla(
-      ["Dispositivo", "Ubicación", "Creado", "Actualizado"],
-      items.map((item) => filaAbierta(item, ahora)),
-      { conAccion: true }
-    );
+  /*
+    Las inactivas van en la misma tabla, en un tbody que nace oculto (L78): así
+    quedan alineadas con las de arriba y no repiten la fila de títulos. El pie
+    de la tabla es el botón que las muestra; tocarlo no redibuja la lista.
+  */
+  function tablaSesiones(items, ahora, { inactivas = [] } = {}) {
+    const columnas = ["Dispositivo", "Ubicación", "Creado", "Actualizado"];
+    const despues = [];
+    if (inactivas.length > 0) {
+      const cuerpo = el(
+        "tbody",
+        { id: "sesionesInactivas", class: "sesiones__inactivas", hidden: !estado.inactivasAbiertas },
+        ...inactivas.map((item) => filaAbierta(item, ahora))
+      );
+      const textoBoton = () => (estado.inactivasAbiertas ? "Ocultar sesiones inactivas" : textoInactivas(inactivas.length));
+      const boton = el("button", {
+        type: "button",
+        class: "sesiones__ver-inactivas",
+        "aria-controls": "sesionesInactivas",
+        "aria-expanded": String(estado.inactivasAbiertas),
+        "data-foco": "inactivas",
+        onclick: () => {
+          estado.inactivasAbiertas = !estado.inactivasAbiertas;
+          cuerpo.hidden = !estado.inactivasAbiertas;
+          boton.setAttribute("aria-expanded", String(estado.inactivasAbiertas));
+          boton.textContent = textoBoton();
+        },
+        texto: textoBoton(),
+      });
+      despues.push(cuerpo, el("tfoot", {}, el("tr", {}, el("td", { colspan: columnas.length + 1 }, boton))));
+    }
+    return tabla(columnas, items.map((item) => filaAbierta(item, ahora)), { conAccion: true, despues });
   }
 
   // Las cerradas sólo dicen dispositivo, ciudad, cuándo y motivo (L31), sin
@@ -198,10 +225,10 @@ function configurarSesionesActivas(session) {
     );
   }
 
-  function plegable({ resumen, abierto, foco, alCambiar }, ...hijos) {
+  function plegable({ resumen, abierto, foco, alCambiar, clase = null }, ...hijos) {
     const detalles = el(
       "details",
-      { class: "sesiones__plegable", open: abierto },
+      { class: clase ? `sesiones__plegable ${clase}` : "sesiones__plegable", open: abierto },
       el("summary", { class: "sesiones__plegable-resumen", "data-foco": foco, texto: resumen }),
       ...hijos
     );
@@ -287,19 +314,8 @@ function configurarSesionesActivas(session) {
     nodos.push(
       grupo(
         `Sesiones abiertas · ${abiertas}`,
-        visibles.length > 0 ? tablaSesiones(visibles, ahora) : null,
-        demas === 0 ? el("p", { class: "portal__field-note", texto: "No tienes otras sesiones abiertas." }) : null,
-        grupos.inactivas.length > 0
-          ? plegable(
-              {
-                resumen: textoInactivas(grupos.inactivas.length),
-                abierto: estado.inactivasAbiertas,
-                foco: "inactivas",
-                alCambiar: (abierto) => (estado.inactivasAbiertas = abierto),
-              },
-              tablaSesiones(grupos.inactivas, ahora)
-            )
-          : null
+        abiertas > 0 ? tablaSesiones(visibles, ahora, { inactivas: grupos.inactivas }) : null,
+        demas === 0 ? el("p", { class: "portal__field-note", texto: "No tienes otras sesiones abiertas." }) : null
       )
     );
 
@@ -327,6 +343,7 @@ function configurarSesionesActivas(session) {
             resumen: `Cerradas en los últimos 7 días · ${grupos.cerradas.length}`,
             abierto: estado.cerradasAbiertas,
             foco: "cerradas",
+            clase: "sesiones__plegable--encabezado",
             alCambiar: (abierto) => (estado.cerradasAbiertas = abierto),
           },
           tabla(["Dispositivo", "Ubicación", "Cerrada", "Motivo"], visibles.map((item) => filaCerrada(item))),

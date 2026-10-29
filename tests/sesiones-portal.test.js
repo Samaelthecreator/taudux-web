@@ -498,6 +498,31 @@ test("«Cerrar las demás sesiones» has its own style, aligned left with an exi
   assert.match(css, /\.sesiones__cerrar-demas:hover:not\(:disabled\)\s*\{[^}]*background-color:\s*color-mix\(in srgb, var\(--color-error\) 16%, transparent\);/);
 });
 
+test("inactive sessions fold into the open table behind a footer button (L78)", () => {
+  /*
+    Las inactivas van en la misma tabla que las abiertas, en un tbody que nace
+    oculto, así quedan alineadas y sin repetir la fila de títulos. El pie es
+    un botón con aria-expanded; el estado sobrevive al refresco de cada minuto.
+  */
+  assert.match(CONTROLADOR, /tablaSesiones\(visibles, ahora, \{ inactivas: grupos\.inactivas \}\)/);
+  assert.doesNotMatch(CONTROLADOR, /tablaSesiones\(grupos\.inactivas/);
+  assert.match(CONTROLADOR, /el\(\s*"tbody",\s*\{ id: "sesionesInactivas", class: "sesiones__inactivas", hidden: !estado\.inactivasAbiertas \}/);
+  assert.match(CONTROLADOR, /"aria-controls": "sesionesInactivas"/);
+  assert.match(CONTROLADOR, /"aria-expanded": String\(estado\.inactivasAbiertas\)/);
+  assert.match(CONTROLADOR, /"data-foco": "inactivas"/);
+  assert.match(CONTROLADOR, /"Ocultar sesiones inactivas"/);
+  assert.match(CONTROLADOR, /colspan: columnas\.length \+ 1/);
+  // «Cerradas…» sigue siendo un <details>, ahora con estilo de encabezado.
+  assert.match(CONTROLADOR, /clase: "sesiones__plegable--encabezado"/);
+
+  const css = read("src/app/features/portal/portal.css");
+  assert.match(css, /\.sesiones__ver-inactivas\s*\{[^}]*justify-content:\s*space-between;/);
+  assert.match(css, /\.sesiones__ver-inactivas::after[^{]*\{[^}]*mask:\s*url\("data:image\/svg\+xml,/);
+  assert.match(css, /\.sesiones__ver-inactivas\[aria-expanded="true"\]::after\s*\{[^}]*rotate\(180deg\)/);
+  assert.match(css, /\.sesiones__plegable--encabezado > \.sesiones__plegable-resumen\s*\{[^}]*list-style:\s*none;[^}]*text-transform:\s*uppercase;/);
+  assert.match(css, /\.sesiones__plegable--encabezado\[open\] > \.sesiones__plegable-resumen::after\s*\{[^}]*rotate\(180deg\)/);
+});
+
 test("state badges are pills with an icon per state, and the legend lists them as rows (L76)", () => {
   /*
     Una sola insignia para la tabla y para la leyenda: píldora con el icono de
@@ -545,7 +570,8 @@ test("full dates look like the attachment: «18 oct 2026, 6:04 a.m.» (L62)", ()
 
 test("open sessions are a table: Dispositivo, Ubicación, Creado, Actualizado and «⋯» (L62)", () => {
   const tabla = CONTROLADOR.match(/function tablaSesiones[\s\S]*?\n  }\n/)[0];
-  assert.match(tabla, /tabla\(\s*\["Dispositivo", "Ubicación", "Creado", "Actualizado"\],[\s\S]*\{ conAccion: true \}/);
+  assert.match(tabla, /const columnas = \["Dispositivo", "Ubicación", "Creado", "Actualizado"\];/);
+  assert.match(tabla, /tabla\(columnas, [\s\S]*\{ conAccion: true, despues \}/);
   const envoltorio = CONTROLADOR.match(/function tabla\([\s\S]*?\n  }\n/)[0];
   assert.match(envoltorio, /class: "sesiones__tabla-envoltorio"/);
   assert.match(envoltorio, /conAccion \? el\("th", \{ scope: "col", class: "sesiones__accion", "aria-label": "Acciones" \}\)/);

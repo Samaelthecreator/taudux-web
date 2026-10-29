@@ -1171,6 +1171,85 @@ a.portal__fila:hover {
   margin-block-end: 0.5rem;
 }
 
+/* Las inactivas, dentro de la tabla de abiertas (L78). */
+.sesiones__inactivas tr:first-child td,
+.sesiones__tabla tfoot td {
+  border-block-start: 1px solid var(--cfg-borde);
+}
+
+.sesiones__tabla tfoot td {
+  padding: 0;
+}
+
+.sesiones__ver-inactivas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  inline-size: 100%;
+  padding: 16px 20px;
+  border: 0;
+  background: none;
+  color: var(--cfg-texto-2);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.sesiones__ver-inactivas:hover {
+  color: var(--cfg-texto);
+}
+
+.sesiones__ver-inactivas:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.sesiones__ver-inactivas::after,
+.sesiones__plegable--encabezado > .sesiones__plegable-resumen::after {
+  content: "";
+  flex: none;
+  inline-size: 18px;
+  block-size: 18px;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M6%209l6%206%206-6%27%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M6%209l6%206%206-6%27%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+  transition: transform var(--transition-fast);
+}
+
+.sesiones__ver-inactivas[aria-expanded="true"]::after {
+  transform: rotate(180deg);
+}
+
+/* «Cerradas en los últimos 7 días · N»: un encabezado como el de abiertas. */
+.sesiones__plegable--encabezado > .sesiones__plegable-resumen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
+  color: var(--cfg-texto-2);
+  font-family: "Orbitron", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sesiones__plegable--encabezado > .sesiones__plegable-resumen::-webkit-details-marker {
+  display: none;
+}
+
+.sesiones__plegable--encabezado > .sesiones__plegable-resumen:hover {
+  color: var(--cfg-texto);
+}
+
+.sesiones__plegable--encabezado[open] > .sesiones__plegable-resumen::after {
+  transform: rotate(180deg);
+}
+
 .sesiones__mas {
   margin-block-start: 0.5rem;
 }
@@ -1348,6 +1427,11 @@ a.portal__fila:hover {
 
   .portal__fila--accion .portal__boton-fila {
     flex-basis: 100%;
+  }
+
+  /* La tabla se desliza: la flecha va junto al texto para que se vea. */
+  .sesiones__ver-inactivas {
+    justify-content: flex-start;
   }
 
   /* La leyenda de estados: la insignia arriba y su explicación debajo. */
