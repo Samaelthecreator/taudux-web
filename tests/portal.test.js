@@ -645,3 +645,69 @@ test("portal.js converts the DB's snake_case avisos_curso_nuevo into the checkbo
   const js = read("src/app/features/portal/portal.js");
   assert.match(js, /avisosCursoNuevo:\s*perfil\s*&&\s*perfil\.avisos_curso_nuevo/);
 });
+
+/*
+  T7c (S14): detalles de la maqueta «Configuración». Cada enlace del menú
+  lleva su icono decorativo delante del nombre, sin cambiar el destino.
+*/
+function enlacesDelMenu(html) {
+  const inicio = html.indexOf('id="portalNav"');
+  const fin = html.indexOf("</nav>", inicio);
+  return html.slice(inicio, fin).match(/<a class="portal__nav-link"[\s\S]*?<\/a>/g) || [];
+}
+
+test("every portal nav link starts with a decorative icon and keeps its visible name", () => {
+  const enlaces = enlacesDelMenu(read("src/app/features/portal/index.html"));
+  const nombres = ["Editar perfil", "Acceso y seguridad", "Preferencias de avisos", "Mi plan", "Pagos"];
+
+  assert.equal(enlaces.length, nombres.length);
+  enlaces.forEach((enlace, i) => {
+    assert.match(enlace, /^<a[^>]*>\s*<svg[^>]*aria-hidden="true"/, `el enlace ${nombres[i]} debe empezar con su icono`);
+    const nombre = enlace.match(/<span class="portal__nav-texto">([^<]*)<\/span>/);
+    assert.ok(nombre, `el enlace ${nombres[i]} debe envolver su nombre`);
+    assert.equal(nombre[1], nombres[i]);
+  });
+});
+
+test("the portal nav links keep their hashes, sections, and coming-soon badges", () => {
+  const enlaces = enlacesDelMenu(read("src/app/features/portal/index.html"));
+  const destinos = enlaces.map((enlace) => {
+    const [, href, seccion] = enlace.match(/href="([^"]*)" data-seccion="([^"]*)"/);
+    return { href, seccion, pronto: /portal__nav-badge">Pronto</.test(enlace) };
+  });
+
+  assert.deepEqual(destinos, [
+    { href: "#perfil", seccion: "perfil", pronto: false },
+    { href: "#cuenta", seccion: "cuenta", pronto: false },
+    { href: "#correo", seccion: "correo", pronto: false },
+    { href: "#plan", seccion: "plan", pronto: true },
+    { href: "#pagos", seccion: "pagos", pronto: true },
+  ]);
+});
+
+test("the portal startup message names «Configuración»", () => {
+  const html = read("src/app/features/portal/index.html");
+  const inicio = html.indexOf('id="portalStartup"');
+  const arranque = html.slice(inicio, html.indexOf("</div>", inicio));
+
+  assert.match(arranque, /<p>Cargando Configuración…<\/p>/);
+  assert.doesNotMatch(html, /Cargando tu portal/);
+});
+
+test("section titles and their introductions use the mockup typography", () => {
+  const css = read("src/app/features/portal/portal.css");
+  const regla = (selector) => {
+    const inicio = css.indexOf(`\n${selector} {`);
+    assert.notEqual(inicio, -1, `falta la regla ${selector}`);
+    return css.slice(inicio, css.indexOf("}", inicio));
+  };
+
+  const titulo = regla(".portal__section-title");
+  assert.match(titulo, /font-size:\s*26px/);
+  assert.match(titulo, /font-weight:\s*500/);
+
+  // Sólo la introducción que sigue al título: las de «Eliminar cuenta» se rediseñan en T10.
+  const intro = regla(".portal__section-title + .portal__section-intro");
+  assert.match(intro, /font-size:\s*15px/);
+  assert.match(intro, /color:\s*var\(--cfg-texto-2\)/);
+});
