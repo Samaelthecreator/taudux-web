@@ -79,6 +79,8 @@
         const titulo = document.querySelector(`#seccion-${id} .portal__section-title`);
         if (titulo) titulo.focus({ preventScroll: true });
         window.scrollTo({ top: 0 });
+        // En la página de escritorio se desliza el panel, no la ventana (L84).
+        document.querySelector(".portal__cuerpo")?.scrollTo({ top: 0 });
       }
     });
   }

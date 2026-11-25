@@ -86,6 +86,81 @@
   margin: 1.5rem 1.5rem 0;
 }
 
+/*
+  En la página el panel se queda quieto dentro de la ventana, como la caja de
+  la capa (L84): 2rem arriba y abajo, y sólo su contenido se desliza. Así nada
+  pasa por detrás de la barra ni de la cabecera. La capa no lo necesita (el
+  iframe ya es la caja) y el teléfono lo deshace en su bloque.
+*/
+html:not(.portal--embebido) .portal {
+  block-size: 100dvh;
+  padding-block-end: 0;
+  overflow: hidden;
+}
+
+html:not(.portal--embebido) .portal__panel {
+  display: flex;
+  flex-direction: column;
+  block-size: calc(100dvh - var(--navbar-height) - 4rem);
+  padding-block-end: 0;
+  overflow: hidden;
+}
+
+/* Sin margen propio: la barra de desplazamiento va pegada al borde del panel. */
+html:not(.portal--embebido) .portal__cuerpo {
+  flex: 1;
+  min-block-size: 0;
+  margin: 0;
+  padding: 1.5rem 1.5rem 2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* La barra de scroll de la página (ver html en styles.css), que ahora pasa al
+   panel: degradado de la marca y flechas cian, con el riel del color del panel. */
+.portal__cuerpo::-webkit-scrollbar { width: 8px; }
+.portal__cuerpo::-webkit-scrollbar-track { background: var(--cfg-fondo); }
+.portal__cuerpo::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--color-accent-dark), var(--color-accent));
+  border-radius: 99px;
+}
+.portal__cuerpo::-webkit-scrollbar-button:single-button:vertical {
+  display: block;
+  height: 0.75rem;
+  background: var(--cfg-fondo) no-repeat center / 8px 8px;
+}
+.portal__cuerpo::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M4 2 L7 6 H1 Z' fill='%2300e1ff'/%3E%3C/svg%3E");
+}
+.portal__cuerpo::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M1 2 H7 L4 6 Z' fill='%2300e1ff'/%3E%3C/svg%3E");
+}
+.portal__cuerpo::-webkit-scrollbar-button:vertical:start:increment,
+.portal__cuerpo::-webkit-scrollbar-button:vertical:end:decrement { display: none; }
+
+/* Firefox: mismos colores, sin degradado. Dentro de @supports porque en
+   Chrome un `scrollbar-color` anula los ::-webkit-scrollbar. */
+@supports not selector(::-webkit-scrollbar) {
+  .portal__cuerpo {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent-dark) var(--cfg-fondo);
+  }
+}
+
+/*
+  Fuera del área que se desliza: no necesita ser sticky, y con el panel como
+  contenedor (overflow: hidden) su top la empujaría hacia abajo.
+*/
+html:not(.portal--embebido) .portal__header {
+  position: relative;
+  top: auto;
+}
+
+/* Fijo donde nace: arriba del área que se desliza, bajo su padding. */
+html:not(.portal--embebido) .portal__sidebar {
+  top: 0;
+}
+
 .portal__header {
   /* Fija al deslizar, con la ✕ siempre a mano; el contenido pasa por debajo. */
   position: sticky;
@@ -1361,6 +1436,30 @@ a.portal__fila:hover {
 
   .portal__panel > :not(.portal__header) {
     margin: 1rem 1rem 0;
+  }
+
+  /* En teléfono vuelve a deslizarse el documento (deshace L84). */
+  html:not(.portal--embebido) .portal {
+    block-size: auto;
+    overflow: visible;
+  }
+
+  html:not(.portal--embebido) .portal__panel {
+    display: block;
+    block-size: auto;
+    padding-block-end: 2rem;
+    overflow: visible;
+  }
+
+  html:not(.portal--embebido) .portal__header {
+    position: sticky;
+    top: var(--navbar-height);
+  }
+
+  html:not(.portal--embebido) .portal__cuerpo {
+    margin: 1rem 1rem 0;
+    padding: 0;
+    overflow-y: visible;
   }
 
   .portal__header {

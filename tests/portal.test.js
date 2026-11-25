@@ -962,3 +962,44 @@ test("the «Configuración» header stays on top while the panel scrolls, in the
   assert.match(regla(".portal__sidebar"), /top:\s*calc\(var\(--navbar-height\) \+ var\(--portal-cabecera\) \+ 1\.5rem\);/);
   assert.match(regla(".portal--embebido .portal__sidebar"), /top:\s*calc\(var\(--portal-cabecera\) \+ 1\.5rem\);/);
 });
+
+test("on the desktop page the panel stays inside the window and only its content scrolls (L84)", () => {
+  /*
+    Como la capa: una caja fija del alto de la ventana (2rem arriba y abajo) y
+    el contenido deslizándose por dentro. La página no se desliza, así que nada
+    pasa por detrás de la barra ni de la cabecera. El teléfono lo deshace y
+    vuelve a deslizar el documento; la capa queda fuera por el :not().
+  */
+  const css = read("src/app/features/portal/portal.css");
+  const corte = css.indexOf("@media (max-width: 760px)");
+  const telefono = css.slice(corte, css.indexOf("\n}\n", corte));
+  const regla = (fuente, selector) => {
+    const escapado = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const encontrada = fuente.match(new RegExp(`${escapado}\\s*\\{([^}]*)\\}`));
+    assert.ok(encontrada, selector);
+    return encontrada[1];
+  };
+  const base = css.slice(0, corte);
+  const pagina = regla(base, "html:not(.portal--embebido) .portal");
+  assert.match(pagina, /block-size:\s*100dvh;/);
+  assert.match(pagina, /overflow:\s*hidden;/);
+  const panel = regla(base, "html:not(.portal--embebido) .portal__panel");
+  assert.match(panel, /block-size:\s*calc\(100dvh - var\(--navbar-height\) - 4rem\);/);
+  assert.match(panel, /overflow:\s*hidden;/);
+  const cuerpo = regla(base, "html:not(.portal--embebido) .portal__cuerpo");
+  assert.match(cuerpo, /overflow-y:\s*auto;/);
+  assert.match(cuerpo, /min-block-size:\s*0;/);
+  assert.match(regla(base, "html:not(.portal--embebido) .portal__sidebar"), /top:\s*0;/);
+  // La barra de scroll del sitio pasa al panel, no la del sistema.
+  assert.match(base, /\.portal__cuerpo::-webkit-scrollbar-thumb\s*\{[^}]*linear-gradient\(to bottom, var\(--color-accent-dark\), var\(--color-accent\)\)/);
+  assert.match(regla(base, "html:not(.portal--embebido) .portal__header"), /position:\s*relative;\s*top:\s*auto;/);
+  assert.match(regla(telefono, "html:not(.portal--embebido) .portal__header"), /position:\s*sticky;\s*top:\s*var\(--navbar-height\);/);
+
+  assert.match(regla(telefono, "html:not(.portal--embebido) .portal"), /block-size:\s*auto;[^}]*overflow:\s*visible;/);
+  assert.match(regla(telefono, "html:not(.portal--embebido) .portal__panel"), /block-size:\s*auto;[^}]*overflow:\s*visible;/);
+  assert.match(regla(telefono, "html:not(.portal--embebido) .portal__cuerpo"), /margin:\s*1rem 1rem 0;[^}]*overflow-y:\s*visible;/);
+
+  assert.match(read("src/app/features/portal/index.html"), /<div id="portalContent" class="portal__cuerpo" hidden>/);
+  // Abrir una sección desde un enlace sube el área que se desliza, no sólo la ventana.
+  assert.match(read("src/app/features/portal/portal.js"), /document\.querySelector\("\.portal__cuerpo"\)\?\.scrollTo\(\{ top: 0 \}\);/);
+});
